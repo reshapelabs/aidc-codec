@@ -1,0 +1,9 @@
+[workspace]
+members = [
+  "crates/aidc-core",
+  "crates/aidc-gs1",
+]
+resolver = "2"
+
+[workspace.dependencies]
+thiserror = "1.0"
