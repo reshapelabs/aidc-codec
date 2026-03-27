@@ -103,3 +103,31 @@ pub struct ParseResult {
     pub transport: Transport,
     pub parsed: ParsedPayload,
 }
+
+impl ParsedPayload {
+    pub fn ai_elements(&self) -> Option<&[AiElement]> {
+        match self {
+            Self::Gs1ElementString { elements, .. } => Some(elements),
+            Self::Gs1DigitalLink { elements, .. } => Some(elements),
+            Self::Digits(_) | Self::CompositePacket(_) => None,
+        }
+    }
+
+    pub fn to_hri(&self) -> Option<String> {
+        let elements = self.ai_elements()?;
+        let mut out = String::new();
+        for e in elements {
+            out.push('(');
+            out.push_str(&e.ai);
+            out.push(')');
+            out.push_str(&e.value);
+        }
+        Some(out)
+    }
+}
+
+impl ParseResult {
+    pub fn to_hri(&self) -> Option<String> {
+        self.parsed.to_hri()
+    }
+}
