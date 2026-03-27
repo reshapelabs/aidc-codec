@@ -1,6 +1,6 @@
-# aidc-payload
+# aidc-codec
 
-Rust workspace for parsing AIDC payloads behind a shared interface.
+Rust workspace for AIDC codec implementations (encode/decode) behind a shared interface.
 
 ## Crates
 
