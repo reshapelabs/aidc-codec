@@ -2,6 +2,7 @@
 members = [
   "crates/aidc-core",
   "crates/aidc-gs1",
+  "crates/aidc-contract-tests",
 ]
 resolver = "2"
 

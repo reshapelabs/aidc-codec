@@ -1,0 +1,9 @@
+[package]
+name = "aidc-contract-tests"
+version = "0.1.0"
+edition = "2021"
+
+[dev-dependencies]
+aidc-core = { path = "../aidc-core" }
+aidc-gs1 = { path = "../aidc-gs1", features = ["gs1-core"] }
+proptest = { workspace = true }

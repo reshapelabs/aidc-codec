@@ -3,10 +3,18 @@
 version = 4
 
 [[package]]
+name = "aidc-contract-tests"
+version = "0.1.0"
+dependencies = [
+ "aidc-core",
+ "aidc-gs1",
+ "proptest",
+]
+
+[[package]]
 name = "aidc-core"
 version = "0.1.0"
 dependencies = [
- "aidc-gs1",
  "thiserror",
 ]
 

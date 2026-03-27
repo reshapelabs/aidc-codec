@@ -5,6 +5,3 @@ edition = "2021"
 
 [dependencies]
 thiserror = { workspace = true }
-
-[dev-dependencies]
-aidc-gs1 = { path = "../aidc-gs1", features = ["gs1-core"] }
