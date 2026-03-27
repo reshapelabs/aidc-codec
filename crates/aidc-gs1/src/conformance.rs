@@ -239,7 +239,7 @@ fn valid_mod10(digits: &str) -> bool {
         .map(|b| u32::from(b - b'0'))
         .collect();
     let mut sum = 0u32;
-    let mut weight = if vals.len() % 2 == 0 { 3 } else { 1 };
+    let mut weight = if vals.len().is_multiple_of(2) { 3 } else { 1 };
     for n in &vals[..vals.len() - 1] {
         sum += *n * weight;
         weight = 4 - weight;
@@ -420,7 +420,7 @@ fn find_primary_start(segments: &[String], options: DlParseOptions) -> Result<us
         return Err(AidcError::InvalidInput("path does not contain AI/value pair".to_owned()));
     }
     for i in (0..segments.len().saturating_sub(1)).rev() {
-        if (segments.len() - i) % 2 != 0 {
+        if !(segments.len() - i).is_multiple_of(2) {
             continue;
         }
         let ai = match normalize_ai(&segments[i], options) {

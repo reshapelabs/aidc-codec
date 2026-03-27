@@ -14,6 +14,8 @@ Prefer adding new specs as new crates (new codec implementation) that conform to
 ## Build, Test, and Development Commands
 - `cargo check`: fast compile validation for all crates.
 - `cargo test`: run full workspace tests.
+- `cargo nextest run`: preferred fast test runner for local/CI use.
+- `cargo clippy --workspace --all-targets -- -D warnings`: strict lint gate.
 - `cargo test -p aidc-gs1 --features gs1-dl`: test GS1 Digital Link feature path.
 - `cargo test -p aidc-gs1 --lib`: quick inner-loop for GS1 unit/property tests.
 
@@ -30,6 +32,7 @@ Use `mise` for toolchain management (`mise.toml` pins Rust toolchain).
 - `proptest` is crucial here: use it for parser invariants, boundary handling, and malformed input behavior.
 - Keep `proptest-regressions` files committed when they capture real failures.
 - Add deterministic fixture tests for all critical behavior changes.
+- Run `clippy` (with `-D warnings`) before committing.
 
 When adding a new codec/spec crate, prioritize borrowing/adapting authoritative external conformance tests and vectors (reference repos/spec suites) before expanding custom tests.
 

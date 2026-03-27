@@ -20,7 +20,7 @@ pub fn parse_payload(message: Gs1TransportMessage) -> Result<ParseResult, AidcEr
         TransportKind::Gs1ElementString => {
             #[cfg(feature = "gs1-core")]
             {
-                return gs1::parse_element_string(message.transport, message.normalized);
+                gs1::parse_element_string(message.transport, message.normalized)
             }
             #[cfg(not(feature = "gs1-core"))]
             {
@@ -32,7 +32,7 @@ pub fn parse_payload(message: Gs1TransportMessage) -> Result<ParseResult, AidcEr
         TransportKind::Gs1DigitalLinkUri => {
             #[cfg(feature = "gs1-dl")]
             {
-                return gs1::parse_digital_link(message.transport, message.normalized);
+                gs1::parse_digital_link(message.transport, message.normalized)
             }
             #[cfg(not(feature = "gs1-dl"))]
             {
@@ -44,7 +44,7 @@ pub fn parse_payload(message: Gs1TransportMessage) -> Result<ParseResult, AidcEr
         TransportKind::Gs1CompositePacket => {
             #[cfg(feature = "gs1-composite")]
             {
-                return gs1::parse_composite_packet(message.transport, message.normalized);
+                gs1::parse_composite_packet(message.transport, message.normalized)
             }
             #[cfg(not(feature = "gs1-composite"))]
             {
