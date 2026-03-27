@@ -1,15 +1,15 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-This is a Rust workspace focused on AIDC payload decoding.
+This is a Rust workspace focused on AIDC payload decoding and encoding.
 
-- `crates/aidc-core`: shared interfaces and error types (`Codec`, `TransportDecoder`, `PayloadParser`, `ScanInput`).
-- `crates/aidc-gs1`: GS1 implementation (transport identify/normalize, parsing, conformance helpers, AI dictionary generation).
+- `crates/aidc-core`: shared interfaces and error types (`TransportCodec`, scan I/O models, canonical encode models).
+- `crates/aidc-gs1`: GS1 implementation (transport identify/normalize, parse + encode, conformance helpers, AI dictionary generation).
 - `crates/aidc-gs1/tests`: fixture-driven integration tests.
 - `crates/aidc-gs1/proptest-regressions`: persisted failing seeds from property tests.
 - `crates/aidc-gs1/data/gs1-syntax-dictionary.txt`: source for generated AI metadata.
 
-Prefer adding new specs as new crates (new codec implementation) that conform to `aidc-core`.
+Prefer adding new specs as new crates (new codec implementation) that conform to `aidc-core` for both decode and encode paths.
 
 ## Build, Test, and Development Commands
 - `cargo check`: fast compile validation for all crates.

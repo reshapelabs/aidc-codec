@@ -6,6 +6,30 @@ pub struct ScanInput<'a> {
     pub raw: &'a [u8],
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DataElement {
+    pub id: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CanonicalPayload {
+    Digits(String),
+    Elements(Vec<DataElement>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EncodeInput {
+    pub symbology_identifier: String,
+    pub payload: CanonicalPayload,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EncodedScan {
+    pub symbology_identifier: String,
+    pub raw: Vec<u8>,
+}
+
 impl<'a> ScanInput<'a> {
     pub fn new(symbology_identifier: &'a str, raw: &'a [u8]) -> Self {
         Self {
@@ -46,20 +70,27 @@ pub enum AidcError {
     InvalidPayload(String),
 }
 
-pub trait TransportDecoder {
-    type Message;
+pub trait TransportCodec {
+    type TransportMsg;
+    type Decoded;
+    type EncodeRequest;
 
-    fn decode_transport(&self, input: ScanInput<'_>) -> Result<Self::Message, AidcError>;
-}
+    fn decode_transport(&self, input: ScanInput<'_>) -> Result<Self::TransportMsg, AidcError>;
+    fn parse_payload(&self, message: Self::TransportMsg) -> Result<Self::Decoded, AidcError>;
 
-pub trait PayloadParser<M> {
-    type Output;
+    fn format_payload(
+        &self,
+        request: Self::EncodeRequest,
+    ) -> Result<Self::TransportMsg, AidcError>;
+    fn encode_transport(&self, message: Self::TransportMsg) -> Result<EncodedScan, AidcError>;
 
-    fn parse_payload(&self, message: M) -> Result<Self::Output, AidcError>;
-}
+    fn decode(&self, input: ScanInput<'_>) -> Result<Self::Decoded, AidcError> {
+        let message = self.decode_transport(input)?;
+        self.parse_payload(message)
+    }
 
-pub trait Codec {
-    type Output;
-
-    fn decode(&self, input: ScanInput<'_>) -> Result<Self::Output, AidcError>;
+    fn encode(&self, request: Self::EncodeRequest) -> Result<EncodedScan, AidcError> {
+        let message = self.format_payload(request)?;
+        self.encode_transport(message)
+    }
 }

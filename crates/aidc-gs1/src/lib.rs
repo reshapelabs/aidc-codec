@@ -1,11 +1,12 @@
 mod ai;
 pub mod conformance;
+pub mod encode;
 pub mod identify;
 pub mod model;
 pub mod normalize;
 pub mod parser;
 
-use aidc_core::{AidcError, Codec, PayloadParser, ScanInput, TransportDecoder};
+use aidc_core::{AidcError, EncodeInput, EncodedScan, ScanInput, TransportCodec};
 
 pub use identify::identify_transport;
 pub use model::{
@@ -21,10 +22,12 @@ pub use conformance::{
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Gs1Codec;
 
-impl TransportDecoder for Gs1Codec {
-    type Message = Gs1TransportMessage;
+impl TransportCodec for Gs1Codec {
+    type TransportMsg = Gs1TransportMessage;
+    type Decoded = ParseResult;
+    type EncodeRequest = EncodeInput;
 
-    fn decode_transport(&self, input: ScanInput<'_>) -> Result<Self::Message, AidcError> {
+    fn decode_transport(&self, input: ScanInput<'_>) -> Result<Self::TransportMsg, AidcError> {
         let transport = identify_transport(input.symbology_identifier)?;
         let normalized = normalize_payload(&transport, input.raw)?;
 
@@ -33,22 +36,25 @@ impl TransportDecoder for Gs1Codec {
             normalized,
         })
     }
-}
 
-impl PayloadParser<Gs1TransportMessage> for Gs1Codec {
-    type Output = ParseResult;
-
-    fn parse_payload(&self, message: Gs1TransportMessage) -> Result<Self::Output, AidcError> {
+    fn parse_payload(&self, message: Self::TransportMsg) -> Result<Self::Decoded, AidcError> {
         parse_payload(message)
     }
-}
 
-impl Codec for Gs1Codec {
-    type Output = ParseResult;
+    fn format_payload(&self, input: Self::EncodeRequest) -> Result<Self::TransportMsg, AidcError> {
+        let transport = identify_transport(&input.symbology_identifier)?;
+        let raw = encode::encode_payload(transport.kind, input.payload)?;
+        Ok(Gs1TransportMessage {
+            transport,
+            normalized: raw,
+        })
+    }
 
-    fn decode(&self, input: ScanInput<'_>) -> Result<Self::Output, AidcError> {
-        let message = self.decode_transport(input)?;
-        self.parse_payload(message)
+    fn encode_transport(&self, message: Self::TransportMsg) -> Result<EncodedScan, AidcError> {
+        Ok(EncodedScan {
+            symbology_identifier: message.transport.symbology_id.as_str().to_owned(),
+            raw: message.normalized,
+        })
     }
 }
 

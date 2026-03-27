@@ -63,6 +63,28 @@ impl SymbologyId {
             other => Self::Unknown(other.to_owned()),
         }
     }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::E0 => "]E0",
+            Self::E1 => "]E1",
+            Self::E2 => "]E2",
+            Self::E3 => "]E3",
+            Self::E4 => "]E4",
+            Self::I1 => "]I1",
+            Self::C1 => "]C1",
+            Self::LowerE0 => "]e0",
+            Self::LowerE1 => "]e1",
+            Self::LowerE2 => "]e2",
+            Self::D2 => "]d2",
+            Self::Q3 => "]Q3",
+            Self::J0 => "]J0",
+            Self::J1 => "]J1",
+            Self::D1 => "]d1",
+            Self::Q1 => "]Q1",
+            Self::Unknown(v) => v.as_str(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
