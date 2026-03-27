@@ -1,6 +1,6 @@
 use aidc_core::{AidcError, CanonicalPayload, DataElement};
 
-use crate::ai::{ai_requires_fnc1, fixed_value_length};
+use crate::ai::{ai_requires_fnc1, validate_ai_value};
 use crate::model::TransportKind;
 
 pub fn encode_payload(kind: TransportKind, payload: CanonicalPayload) -> Result<Vec<u8>, AidcError> {
@@ -45,23 +45,7 @@ fn encode_element_string(elements: Vec<DataElement>) -> Result<Vec<u8>, AidcErro
                 "element id must be a numeric AI code".to_owned(),
             ));
         }
-        if element.value.is_empty() {
-            return Err(AidcError::InvalidPayload(
-                "AI value must not be empty".to_owned(),
-            ));
-        }
-        if element.value.len() > 90 {
-            return Err(AidcError::InvalidPayload(
-                "AI value too long".to_owned(),
-            ));
-        }
-        if let Some(n) = fixed_value_length(&element.id) {
-            if element.value.len() != n {
-                return Err(AidcError::InvalidPayload(
-                    "fixed-length AI has invalid value length".to_owned(),
-                ));
-            }
-        }
+        validate_ai_value(&element.id, &element.value)?;
 
         if idx > 0 && ai_requires_fnc1(&elements[idx - 1].id) {
             out.push(0x1D);

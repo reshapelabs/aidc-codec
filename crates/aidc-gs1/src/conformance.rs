@@ -3,6 +3,7 @@ use std::collections::HashSet;
 
 use crate::ai::{
     ai_requires_fnc1, fixed_value_length, is_dl_attribute_ai, is_known_ai, is_primary_ai,
+    validate_ai_value as validate_ai_value_by_meta,
 };
 use crate::model::SymbologyId;
 
@@ -461,57 +462,17 @@ fn is_valid_path_qualifier(primary_ai: &str, ai: &str) -> bool {
 }
 
 fn validate_ai_value(ai: &mut String, value: &mut String, options: DlParseOptions) -> Result<(), AidcError> {
-    match ai.as_str() {
-        "00" | "8018" => {
-            if value.len() != 18 || !value.chars().all(|c| c.is_ascii_digit()) {
-                return Err(AidcError::InvalidInput("invalid fixed numeric AI value".to_owned()));
-            }
-        }
-        "01" | "02" => {
-            if value.len() == 14 && value.chars().all(|c| c.is_ascii_digit()) {
-                return Ok(());
-            }
-            if *ai == "01" && options.permit_zero_suppressed_gtin && value.chars().all(|c| c.is_ascii_digit()) {
-                match value.len() {
-                    13 | 12 | 8 => {
-                        *value = format!("{:0>14}", value);
-                        return Ok(());
-                    }
-                    _ => {}
-                }
-            }
-            return Err(AidcError::InvalidInput("invalid GTIN length".to_owned()));
-        }
-        "17" => {
-            if value.len() != 6 || !value.chars().all(|c| c.is_ascii_digit()) {
-                return Err(AidcError::InvalidInput("invalid date value".to_owned()));
-            }
-        }
-        "3103" => {
-            if value.len() != 6 || !value.chars().all(|c| c.is_ascii_digit()) {
-                return Err(AidcError::InvalidInput("invalid net weight value".to_owned()));
-            }
-        }
-        "414" => {
-            if value.len() != 13 || !value.chars().all(|c| c.is_ascii_digit()) {
-                return Err(AidcError::InvalidInput("invalid GLN value".to_owned()));
-            }
-        }
-        "253" => {
-            if value.len() < 13 || value.len() > 30 {
-                return Err(AidcError::InvalidInput("invalid GDTI value length".to_owned()));
-            }
-            if !value[..13].chars().all(|c| c.is_ascii_digit()) {
-                return Err(AidcError::InvalidInput("invalid GDTI prefix".to_owned()));
-            }
-        }
-        _ => {
-            if value.len() > 90 {
-                return Err(AidcError::InvalidInput("AI value too long".to_owned()));
-            }
-        }
+    if *ai == "01"
+        && options.permit_zero_suppressed_gtin
+        && value.chars().all(|c| c.is_ascii_digit())
+        && matches!(value.len(), 13 | 12 | 8)
+    {
+        *value = format!("{:0>14}", value);
     }
-    Ok(())
+    validate_ai_value_by_meta(ai, value).map_err(|err| match err {
+        AidcError::InvalidPayload(msg) => AidcError::InvalidInput(msg),
+        other => other,
+    })
 }
 
 fn to_internal_ai_string(elements: &[(String, String)]) -> String {

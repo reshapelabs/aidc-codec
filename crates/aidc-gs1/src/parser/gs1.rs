@@ -1,6 +1,6 @@
 use aidc_core::AidcError;
 
-use crate::ai::{fixed_value_length, is_known_ai};
+use crate::ai::{fixed_value_length, is_known_ai, validate_ai_value};
 #[cfg(feature = "gs1-dl")]
 use crate::conformance::{parse_dl_uri, DlParseOptions};
 use crate::model::{AiElement, Gs1Ai, ParseResult, ParsedPayload, Transport};
@@ -81,6 +81,7 @@ fn parse_field(mut field: &str, out: &mut Vec<AiElement>) -> Result<(), AidcErro
                 return Err(AidcError::InvalidPayload("truncated fixed-length AI value".to_owned()));
             }
             let value = &body[..n];
+            validate_ai_value(&ai, value)?;
             out.push(AiElement {
                 ai: Gs1Ai::parse(&ai),
                 value: value.to_owned(),
@@ -92,6 +93,7 @@ fn parse_field(mut field: &str, out: &mut Vec<AiElement>) -> Result<(), AidcErro
         if body.is_empty() {
             return Err(AidcError::InvalidPayload("empty variable-length AI value".to_owned()));
         }
+        validate_ai_value(&ai, body)?;
         out.push(AiElement {
             ai: Gs1Ai::parse(&ai),
             value: body.to_owned(),

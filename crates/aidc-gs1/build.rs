@@ -6,10 +6,27 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 struct Meta {
     fixed_len: Option<u8>,
+    components: Vec<Component>,
     fnc1_required: bool,
     dl_data_attr: bool,
     dl_primary_key: bool,
     dl_qualifiers: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Charset {
+    N,
+    X,
+    Y,
+    Z,
+}
+
+#[derive(Debug, Clone)]
+struct Component {
+    charset: Charset,
+    min: u8,
+    max: u8,
+    optional: bool,
 }
 
 fn main() {
@@ -64,6 +81,10 @@ fn main() {
         let spec = spec_tokens.join(" ");
         let attrs = attr_tokens.join(" ");
         let fixed_len = fixed_len_from_spec(&spec);
+        let components = parse_components(&spec);
+        if components.is_empty() {
+            continue;
+        }
         let dl_primary_key = attrs.contains("dlpkey");
         let dl_qualifiers = attrs
             .split_whitespace()
@@ -71,6 +92,7 @@ fn main() {
 
         let meta = Meta {
             fixed_len,
+            components,
             fnc1_required: !flags.contains('*'),
             dl_data_attr: flags.contains('?'),
             dl_primary_key,
@@ -93,8 +115,25 @@ fn main() {
             Some(q) => format!("Some({q:?})"),
             None => "None".to_owned(),
         };
+        let components = m
+            .components
+            .iter()
+            .map(|c| {
+                let charset = match c.charset {
+                    Charset::N => "AiCharset::N",
+                    Charset::X => "AiCharset::X",
+                    Charset::Y => "AiCharset::Y",
+                    Charset::Z => "AiCharset::Z",
+                };
+                format!(
+                    "AiComponent {{ charset: {charset}, min: {}, max: {}, optional: {} }}",
+                    c.min, c.max, c.optional
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
         out.push_str(&format!(
-            "    {ai:?} => AiMeta {{ code: {ai:?}, fixed_len: {fixed}, fnc1_required: {}, dl_data_attr: {}, dl_primary_key: {}, dl_qualifiers: {} }},\n",
+            "    {ai:?} => AiMeta {{ code: {ai:?}, fixed_len: {fixed}, components: &[{components}], fnc1_required: {}, dl_data_attr: {}, dl_primary_key: {}, dl_qualifiers: {} }},\n",
             m.fnc1_required, m.dl_data_attr, m.dl_primary_key, quals
         ));
     }
@@ -102,6 +141,52 @@ fn main() {
 
     let out_path = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR")).join("ai_dictionary.rs");
     fs::write(out_path, out).expect("write generated ai dictionary");
+}
+
+fn parse_components(spec: &str) -> Vec<Component> {
+    let mut out = Vec::new();
+    for token in spec.split_whitespace() {
+        let mut head = token;
+        if let Some((prefix, _)) = head.split_once(',') {
+            head = prefix;
+        }
+        if head.is_empty() {
+            continue;
+        }
+
+        let optional = head.starts_with('[');
+        let head = head.trim_start_matches('[').trim_end_matches(']');
+        if head.len() < 2 {
+            return Vec::new();
+        }
+
+        let charset = match head.as_bytes()[0] {
+            b'N' => Charset::N,
+            b'X' => Charset::X,
+            b'Y' => Charset::Y,
+            b'Z' => Charset::Z,
+            _ => return Vec::new(),
+        };
+
+        let len_spec = &head[1..];
+        let (min, max) = if let Some((_, max)) = len_spec.split_once("..") {
+            let max = max.parse::<u8>().ok();
+            (1u8, max.unwrap_or(0))
+        } else {
+            let n = len_spec.parse::<u8>().ok();
+            (n.unwrap_or(0), n.unwrap_or(0))
+        };
+        if min == 0 || max == 0 || min > max {
+            return Vec::new();
+        }
+        out.push(Component {
+            charset,
+            min,
+            max,
+            optional,
+        });
+    }
+    out
 }
 
 fn expand_ai(token: &str) -> Vec<String> {
