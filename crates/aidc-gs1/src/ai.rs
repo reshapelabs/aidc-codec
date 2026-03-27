@@ -1,78 +1,35 @@
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct AiMeta {
+    pub code: &'static str,
+    pub fixed_len: Option<u8>,
+    pub fnc1_required: bool,
+    pub dl_data_attr: bool,
+    pub dl_primary_key: bool,
+    pub dl_qualifiers: Option<&'static str>,
+}
+
+include!(concat!(env!("OUT_DIR"), "/ai_dictionary.rs"));
+
+pub(crate) fn lookup_ai(ai: &str) -> Option<&'static AiMeta> {
+    AI_DICTIONARY.get(ai)
+}
+
 pub(crate) fn fixed_value_length(ai: &str) -> Option<usize> {
-    let bytes = ai.as_bytes();
-    if bytes.len() < 2 || !bytes[0].is_ascii_digit() || !bytes[1].is_ascii_digit() {
-        return None;
-    }
-    let prefix = usize::from(bytes[0] - b'0') * 10 + usize::from(bytes[1] - b'0');
-    const FIXED_BY_PREFIX: &[u8] = &[
-        18, 14, 14, 14, 16, 0, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ];
-    let n = FIXED_BY_PREFIX[prefix];
-    if n == 0 { None } else { Some(n as usize) }
+    lookup_ai(ai).and_then(|m| m.fixed_len.map(usize::from))
 }
 
 pub(crate) fn is_known_ai(ai: &str) -> bool {
-    if ai.len() == 4 {
-        if let Some(prefix) = ai.get(..3) {
-            if matches!(prefix, "310" | "392") {
-                return true;
-            }
-        }
-    }
-    matches!(
-        ai,
-        "00"
-            | "01"
-            | "02"
-            | "10"
-            | "11"
-            | "12"
-            | "13"
-            | "15"
-            | "16"
-            | "17"
-            | "20"
-            | "21"
-            | "22"
-            | "37"
-            | "89"
-            | "98"
-            | "99"
-            | "235"
-            | "253"
-            | "254"
-            | "255"
-            | "401"
-            | "402"
-            | "414"
-            | "417"
-            | "8003"
-            | "8004"
-            | "8006"
-            | "8010"
-            | "8013"
-            | "8017"
-            | "8018"
-            | "8019"
-            | "8020"
-    )
+    lookup_ai(ai).is_some()
 }
 
 pub(crate) fn is_primary_ai(ai: &str) -> bool {
-    matches!(
-        ai,
-        "00" | "01" | "253" | "255" | "401" | "402" | "414" | "417" | "8003" | "8004" | "8006"
-            | "8010" | "8013" | "8017" | "8018" | "8020"
-    )
+    lookup_ai(ai).is_some_and(|m| m.dl_primary_key)
 }
 
 pub(crate) fn is_dl_attribute_ai(ai: &str) -> bool {
-    matches!(ai, "01" | "02" | "10" | "17" | "37" | "98" | "99" | "3103" | "3922")
+    lookup_ai(ai).is_some_and(|m| m.dl_data_attr)
 }
 
 pub(crate) fn ai_requires_fnc1(ai: &str) -> bool {
-    !matches!(ai, "00" | "01" | "02" | "17" | "3103" | "414")
+    lookup_ai(ai).is_none_or(|m| m.fnc1_required)
 }

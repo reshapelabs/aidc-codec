@@ -12,7 +12,7 @@ fn codec_trait_flow_decodes_aim_payload() {
     match result.parsed {
         ParsedPayload::Gs1ElementString { elements, .. } => {
             assert_eq!(elements.len(), 1);
-            assert_eq!(elements[0].ai, "01");
+            assert_eq!(elements[0].ai.code(), "01");
             assert_eq!(elements[0].value, "09520123456788");
         }
         other => panic!("unexpected parsed payload: {other:?}"),

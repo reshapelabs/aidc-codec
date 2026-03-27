@@ -80,8 +80,55 @@ pub struct Gs1TransportMessage {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AiElement {
-    pub ai: String,
+    pub ai: Gs1Ai,
     pub value: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct KnownAi(&'static AiMeta);
+
+impl KnownAi {
+    pub fn parse(ai: &str) -> Option<Self> {
+        lookup_ai(ai).map(Self)
+    }
+
+    pub fn code(self) -> &'static str {
+        self.0.code
+    }
+
+    pub fn meta(self) -> &'static AiMeta {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Gs1Ai {
+    Known(KnownAi),
+    Unknown(String),
+}
+
+impl Gs1Ai {
+    pub fn parse(ai: &str) -> Self {
+        if let Some(k) = KnownAi::parse(ai) {
+            Self::Known(k)
+        } else {
+            Self::Unknown(ai.to_owned())
+        }
+    }
+
+    pub fn code(&self) -> &str {
+        match self {
+            Self::Known(k) => k.code(),
+            Self::Unknown(v) => v.as_str(),
+        }
+    }
+
+    pub fn known(&self) -> Option<KnownAi> {
+        match self {
+            Self::Known(k) => Some(*k),
+            Self::Unknown(_) => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -118,7 +165,7 @@ impl ParsedPayload {
         let mut out = String::new();
         for e in elements {
             out.push('(');
-            out.push_str(&e.ai);
+            out.push_str(e.ai.code());
             out.push(')');
             out.push_str(&e.value);
         }
@@ -131,3 +178,4 @@ impl ParseResult {
         self.parsed.to_hri()
     }
 }
+use crate::ai::{lookup_ai, AiMeta};

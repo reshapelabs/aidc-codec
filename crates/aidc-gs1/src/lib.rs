@@ -9,8 +9,8 @@ use aidc_core::{AidcError, Codec, PayloadParser, ScanInput, TransportDecoder};
 
 pub use identify::identify_transport;
 pub use model::{
-    AiElement, CarrierFamily, Gs1TransportMessage, ParseResult, ParsedPayload, SymbologyId,
-    Transport, TransportKind,
+    AiElement, CarrierFamily, Gs1Ai, Gs1TransportMessage, KnownAi, ParseResult, ParsedPayload,
+    SymbologyId, Transport, TransportKind,
 };
 pub use normalize::normalize_payload;
 pub use parser::parse_payload;

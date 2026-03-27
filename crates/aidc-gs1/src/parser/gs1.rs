@@ -3,7 +3,7 @@ use aidc_core::AidcError;
 use crate::ai::{fixed_value_length, is_known_ai};
 #[cfg(feature = "gs1-dl")]
 use crate::conformance::{parse_dl_uri, DlParseOptions};
-use crate::model::{AiElement, ParseResult, ParsedPayload, Transport};
+use crate::model::{AiElement, Gs1Ai, ParseResult, ParsedPayload, Transport};
 
 pub fn parse_element_string(transport: Transport, normalized: Vec<u8>) -> Result<ParseResult, AidcError> {
     let elements = parse_ai_elements(&normalized)?;
@@ -82,7 +82,7 @@ fn parse_field(mut field: &str, out: &mut Vec<AiElement>) -> Result<(), AidcErro
             }
             let value = &body[..n];
             out.push(AiElement {
-                ai,
+                ai: Gs1Ai::parse(&ai),
                 value: value.to_owned(),
             });
             field = &body[n..];
@@ -93,7 +93,7 @@ fn parse_field(mut field: &str, out: &mut Vec<AiElement>) -> Result<(), AidcErro
             return Err(AidcError::InvalidPayload("empty variable-length AI value".to_owned()));
         }
         out.push(AiElement {
-            ai,
+            ai: Gs1Ai::parse(&ai),
             value: body.to_owned(),
         });
         field = "";
@@ -143,7 +143,7 @@ mod tests {
     fn parses_fixed_ai_element_string() {
         let elements = parse_ai_elements(b"0109520123456788").expect("parse should succeed");
         assert_eq!(elements.len(), 1);
-        assert_eq!(elements[0].ai, "01");
+        assert_eq!(elements[0].ai.code(), "01");
         assert_eq!(elements[0].value, "09520123456788");
     }
 
@@ -152,11 +152,11 @@ mod tests {
         let elements = parse_ai_elements(b"010952012345678810ABC123\x1d17251231")
             .expect("parse should succeed");
         assert_eq!(elements.len(), 3);
-        assert_eq!(elements[0].ai, "01");
+        assert_eq!(elements[0].ai.code(), "01");
         assert_eq!(elements[0].value, "09520123456788");
-        assert_eq!(elements[1].ai, "10");
+        assert_eq!(elements[1].ai.code(), "10");
         assert_eq!(elements[1].value, "ABC123");
-        assert_eq!(elements[2].ai, "17");
+        assert_eq!(elements[2].ai.code(), "17");
         assert_eq!(elements[2].value, "251231");
     }
 
@@ -168,7 +168,7 @@ mod tests {
 
     #[test]
     fn rejects_unknown_ai() {
-        let err = parse_ai_elements(b"0309520123456788").expect_err("parse should fail");
+        let err = parse_ai_elements(b"0409520123456788").expect_err("parse should fail");
         assert!(err.to_string().contains("unable to identify AI"));
     }
 
@@ -206,9 +206,9 @@ mod tests {
         match parsed.parsed {
             ParsedPayload::Gs1DigitalLink { elements, .. } => {
                 assert_eq!(elements.len(), 2);
-                assert_eq!(elements[0].ai, "01");
+                assert_eq!(elements[0].ai.code(), "01");
                 assert_eq!(elements[0].value, "09520123456788");
-                assert_eq!(elements[1].ai, "10");
+                assert_eq!(elements[1].ai.code(), "10");
                 assert_eq!(elements[1].value, "ABC123");
             }
             other => panic!("unexpected parsed payload: {other:?}"),
