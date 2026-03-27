@@ -1,5 +1,6 @@
 use aidc_core::AidcError;
 
+use crate::ai::{fixed_value_length, is_known_ai};
 use crate::model::{AiElement, ParseResult, ParsedPayload, Transport};
 
 pub fn parse_element_string(transport: Transport, normalized: Vec<u8>) -> Result<ParseResult, AidcError> {
@@ -97,78 +98,11 @@ fn parse_ai(field: &str) -> Option<String> {
         if !ai.bytes().all(|b| b.is_ascii_digit()) {
             continue;
         }
-        if is_supported_ai(ai) {
+        if is_known_ai(ai) {
             return Some(ai.to_owned());
         }
     }
     None
-}
-
-fn is_supported_ai(ai: &str) -> bool {
-    if ai.len() == 4 {
-        if let Some(prefix) = ai.get(..3) {
-            if matches!(prefix, "310" | "392") {
-                return true;
-            }
-        }
-    }
-    matches!(
-        ai,
-        "00"
-            | "01"
-            | "02"
-            | "10"
-            | "11"
-            | "12"
-            | "13"
-            | "15"
-            | "16"
-            | "17"
-            | "20"
-            | "21"
-            | "22"
-            | "37"
-            | "89"
-            | "98"
-            | "99"
-            | "235"
-            | "253"
-            | "254"
-            | "255"
-            | "401"
-            | "402"
-            | "414"
-            | "417"
-            | "8003"
-            | "8004"
-            | "8006"
-            | "8010"
-            | "8013"
-            | "8017"
-            | "8018"
-            | "8019"
-            | "8020"
-    )
-}
-
-fn fixed_value_length(ai: &str) -> Option<usize> {
-    let bytes = ai.as_bytes();
-    if bytes.len() < 2 || !bytes[0].is_ascii_digit() || !bytes[1].is_ascii_digit() {
-        return None;
-    }
-    let prefix = usize::from(bytes[0] - b'0') * 10 + usize::from(bytes[1] - b'0');
-    const FIXED_BY_PREFIX: &[u8] = &[
-        18, 14, 14, 14, 16, 0, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ];
-    let n = FIXED_BY_PREFIX[prefix];
-    if n == 0 {
-        None
-    } else {
-        Some(n as usize)
-    }
 }
 
 #[cfg(test)]

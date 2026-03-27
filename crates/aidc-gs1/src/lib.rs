@@ -1,3 +1,4 @@
+mod ai;
 pub mod conformance;
 pub mod identify;
 pub mod model;
