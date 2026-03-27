@@ -13,6 +13,25 @@ impl<'a> ScanInput<'a> {
             raw,
         }
     }
+
+    pub fn from_aim_scan(scan: &'a [u8]) -> Result<Self, AidcError> {
+        if scan.len() < 3 {
+            return Err(AidcError::InvalidInput(
+                "AIM scan must include a 3-byte symbology identifier".to_owned(),
+            ));
+        }
+        if scan[0] != b']' {
+            return Err(AidcError::InvalidInput(
+                "AIM scan must start with ']'".to_owned(),
+            ));
+        }
+        let symbology_identifier = std::str::from_utf8(&scan[..3])
+            .map_err(|_| AidcError::InvalidInput("invalid UTF-8 in symbology identifier".to_owned()))?;
+        Ok(Self {
+            symbology_identifier,
+            raw: &scan[3..],
+        })
+    }
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]

@@ -50,3 +50,8 @@ impl Codec for Gs1Codec {
         self.parse_payload(message)
     }
 }
+
+pub fn decode_scan(scan: &[u8]) -> Result<ParseResult, AidcError> {
+    let input = ScanInput::from_aim_scan(scan)?;
+    Gs1Codec.decode(input)
+}
