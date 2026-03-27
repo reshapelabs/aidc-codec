@@ -136,6 +136,9 @@ fn parse_ai(field: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use proptest::prelude::*;
+
+    use crate::ai::{is_known_ai, AI_DICTIONARY};
     use super::parse_ai_elements;
     use crate::model::{CarrierFamily, ParsedPayload, SymbologyId, Transport, TransportKind};
 
@@ -212,6 +215,95 @@ mod tests {
                 assert_eq!(elements[1].value, "ABC123");
             }
             other => panic!("unexpected parsed payload: {other:?}"),
+        }
+    }
+
+    fn fixed_ai_strategy() -> impl Strategy<Value = (String, String)> {
+        prop_oneof![
+            proptest::string::string_regex("[0-9]{18}")
+                .expect("valid regex")
+                .prop_map(|v| ("00".to_owned(), v)),
+            proptest::string::string_regex("[0-9]{14}")
+                .expect("valid regex")
+                .prop_map(|v| ("01".to_owned(), v)),
+            proptest::string::string_regex("[0-9]{6}")
+                .expect("valid regex")
+                .prop_map(|v| ("17".to_owned(), v)),
+            proptest::string::string_regex("[0-9]{13}")
+                .expect("valid regex")
+                .prop_map(|v| ("414".to_owned(), v)),
+        ]
+    }
+
+    fn variable_ai_strategy() -> impl Strategy<Value = (String, String)> {
+        prop_oneof![
+            proptest::string::string_regex("[A-Z0-9]{1,20}")
+                .expect("valid regex")
+                .prop_map(|v| ("10".to_owned(), v)),
+            proptest::string::string_regex("[A-Z0-9]{1,20}")
+                .expect("valid regex")
+                .prop_map(|v| ("21".to_owned(), v)),
+            proptest::string::string_regex("[A-Z0-9]{1,28}")
+                .expect("valid regex")
+                .prop_map(|v| ("235".to_owned(), v)),
+        ]
+    }
+
+    fn ai_segment_strategy() -> impl Strategy<Value = (String, String)> {
+        prop_oneof![fixed_ai_strategy(), variable_ai_strategy()]
+    }
+
+    proptest! {
+        #[test]
+        fn hri_is_deterministic_for_parsed_element_strings(
+            segments in prop::collection::vec(ai_segment_strategy(), 1..8)
+        ) {
+            let raw = segments
+                .iter()
+                .map(|(ai, value)| format!("{ai}{value}"))
+                .collect::<Vec<_>>()
+                .join("\u{001d}");
+            let parsed = parse_ai_elements(raw.as_bytes()).expect("generated segment list must parse");
+            let payload = ParsedPayload::Gs1ElementString {
+                original: raw.into_bytes(),
+                elements: parsed,
+            };
+            let hri1 = payload.to_hri().expect("HRI should exist");
+            let hri2 = payload.to_hri().expect("HRI should exist");
+            prop_assert_eq!(hri1, hri2);
+        }
+
+        #[test]
+        fn fnc1_double_separator_is_rejected(
+            segments in prop::collection::vec(ai_segment_strategy(), 2..8),
+            insert_at in 0usize..7usize
+        ) {
+            let mut fields = segments
+                .iter()
+                .map(|(ai, value)| format!("{ai}{value}"))
+                .collect::<Vec<_>>();
+            let slot = insert_at % (fields.len() - 1);
+            fields.insert(slot + 1, String::new());
+            let raw = fields.join("\u{001d}");
+            let err = parse_ai_elements(raw.as_bytes()).expect_err("empty FNC1 segment must fail");
+            prop_assert!(err.to_string().contains("empty FNC1-delimited field"));
+        }
+
+        #[test]
+        fn typed_ai_unknown_numeric_codes_remain_unknown(code in "[0-9]{2,4}") {
+            prop_assume!(!is_known_ai(&code));
+            let ai = crate::model::Gs1Ai::parse(&code);
+            prop_assert_eq!(ai.code(), code.as_str());
+            prop_assert!(ai.known().is_none());
+        }
+
+        #[test]
+        fn typed_ai_dictionary_codes_are_known(index in 0usize..2500usize) {
+            let keys = AI_DICTIONARY.entries().map(|(k, _)| *k).collect::<Vec<_>>();
+            let code = keys[index % keys.len()];
+            let ai = crate::model::Gs1Ai::parse(code);
+            prop_assert_eq!(ai.code(), code);
+            prop_assert!(ai.known().is_some());
         }
     }
 }

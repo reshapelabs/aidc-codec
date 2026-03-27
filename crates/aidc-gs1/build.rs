@@ -33,16 +33,23 @@ fn main() {
         }
 
         let tokens: Vec<&str> = body.split_whitespace().collect();
-        if tokens.len() < 3 {
+        if tokens.len() < 2 {
             continue;
         }
 
         let ai_token = tokens[0];
-        let flags = tokens[1];
+        let (flags, body_start) = if tokens[1].chars().all(|c| !c.is_ascii_alphanumeric()) {
+            (tokens[1], 2)
+        } else {
+            ("", 1)
+        };
+        if tokens.len() <= body_start {
+            continue;
+        }
 
         let mut spec_tokens = Vec::new();
         let mut attr_tokens = Vec::new();
-        for t in &tokens[2..] {
+        for t in &tokens[body_start..] {
             let is_attr = t == &"dlpkey" || t.contains('=');
             if is_attr || !attr_tokens.is_empty() {
                 attr_tokens.push(*t);
