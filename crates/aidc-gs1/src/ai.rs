@@ -141,6 +141,9 @@ fn validate_components(components: &[AiComponent], value: &str) -> Result<(), Ai
                 "AI value has invalid character set".to_owned(),
             ));
         }
+        if matches!(comp.charset, AiCharset::Z) {
+            validate_base64url_segment(&segment)?;
+        }
         validate_component_semantics(comp, &segment)?;
         offset += consume;
     }
@@ -188,7 +191,7 @@ fn validate_charset(ch: char, charset: AiCharset) -> bool {
                 | '+'
                 | '%'
         ),
-        AiCharset::Z => ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_'),
+        AiCharset::Z => ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '='),
     }
 }
 
@@ -255,6 +258,23 @@ fn validate_hhmi(value: &str) -> Result<(), AidcError> {
         return Err(AidcError::InvalidPayload(
             "AI value has invalid time value".to_owned(),
         ));
+    }
+    Ok(())
+}
+
+fn validate_base64url_segment(value: &str) -> Result<(), AidcError> {
+    if !value.len().is_multiple_of(4) {
+        return Err(AidcError::InvalidPayload(
+            "AI value has invalid base64url length".to_owned(),
+        ));
+    }
+    if let Some(eq_pos) = value.find('=') {
+        let pad = &value[eq_pos..];
+        if pad != "=" && pad != "==" {
+            return Err(AidcError::InvalidPayload(
+                "AI value has invalid base64url padding".to_owned(),
+            ));
+        }
     }
     Ok(())
 }
@@ -341,7 +361,52 @@ mod tests {
     #[test]
     fn validates_ai_8030_base64url_charset() {
         assert!(validate_ai_value("8030", "AbC123-_").is_ok());
+        assert!(validate_ai_value(
+            "8030",
+            "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyzABC="
+        )
+        .is_ok());
+        assert!(validate_ai_value(
+            "8030",
+            "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyzAB=="
+        )
+        .is_ok());
         assert!(validate_ai_value("8030", "AbC/123").is_err());
+        assert!(validate_ai_value(
+            "8030",
+            "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxy"
+        )
+        .is_err());
+        assert!(validate_ai_value(
+            "8030",
+            "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwx"
+        )
+        .is_err());
+        assert!(validate_ai_value(
+            "8030",
+            "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvw"
+        )
+        .is_err());
+        assert!(validate_ai_value(
+            "8030",
+            "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyzA==="
+        )
+        .is_err());
+        assert!(validate_ai_value(
+            "8030",
+            "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz===="
+        )
+        .is_err());
+        assert!(validate_ai_value(
+            "8030",
+            "=-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxy"
+        )
+        .is_err());
+        assert!(validate_ai_value(
+            "8030",
+            "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ=_abcdefghijklmnopqrstuvwxy"
+        )
+        .is_err());
     }
 
     #[test]
