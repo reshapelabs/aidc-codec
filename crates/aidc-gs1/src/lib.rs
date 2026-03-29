@@ -1,10 +1,12 @@
 mod ai;
+pub mod check;
 pub mod conformance;
 pub mod encode;
 pub mod identify;
 pub mod model;
 pub mod normalize;
 pub mod parser;
+pub mod variable_measure;
 
 use aidc_core::{AidcError, EncodeInput, EncodedScan, ScanInput, TransportCodec};
 
