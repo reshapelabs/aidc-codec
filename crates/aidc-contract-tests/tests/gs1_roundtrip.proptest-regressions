@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 8ac2815998fac8b470b2698532340bf7114ea58d1efc35dc4af33a6ac336b400 # shrinks to elements = [DataElement { id: "00", value: "100000000023000010" }]

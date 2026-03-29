@@ -1,0 +1,2022 @@
+7 AIDC validation rules
+7.1 Introduction
+The purpose of entering data transmitted from a reading device into a system is to record a
+transaction. In the GS1 system, a transaction is an Electronic Message to be processed according to
+the meaning and content of the data fields contained in the message. This should be possible
+without requiring any human intervention to determine the data’s meaning and content.
+First, an item must be physically present in order to produce a barcode or RFID reader message
+about the item. Only the data present in the data carrier on the item, and therefore relevant to it,
+can be recorded.
+The standardised element strings of the GS1 system are the basis for the identification of items of
+every kind. They identify a particular item in an unambiguous manner and supply relevant attribute
+information.
+When these element strings are printed on items, the scanned and transmitted data refers to that
+item and identifies its physical presence at a given location. When the message read from the
+scanned data carrier is coupled with an internally assigned designation of the type of item
+movement (e.g., warehouse entry, stock taking, sales), it is possible to automatically record data
+related to each movement of items. This provides security in two ways. First, an item must be
+physically present in order to produce a barcode reader message about the item, and second, only
+the data in the barcode on the item and, therefore, relevant to it, can be recorded. False notification
+of movements is thereby largely eliminated.
+When element strings are used in administrative areas (e.g., in order entry) they also can be used
+for automatic, error-free data capture. Because of the considerable length of many GS1 system ID
+numbers, automatic reading has great significance. By using a check digit, a digit that ensures the
+data has been correctly composed, the accuracy of the reading is verified.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 526 of 579
+GS1 General Specifications Standard
+7.2 Synopsis of message processing
+Figure 7-1 Synopsis of element string message processing
+For details on any of the actions in Figure 7-1, see the following subsections.
+Note: For message processing using the GS1 Digital Link URI syntax see the GS1 Digital Link
+standard for detailed information
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 527 of 579
+GS1 General Specifications Standard
+7.2.1 Analysis of the data carrier and plausibility test for element strings
+Figure 7-2 Test procedure
+(1) GS1 symbologies that encode data using GS1 Application Identifiers include GS1-128, GS1
+DataMatrix, GS1 QR Code, GS1 DotCode, GS1 DataBar and Composite and are shown in 7.8. For
+further details on any of the actions in Figure 7-2, see the sections 7.2.2, 7.2.3, 7.2.4, 7.2.5,
+7.2.6, 7.2.7 and 7.2.8.
+(2) For QR Code and Data Matrix symbologies encoding the GS1 Digital Link URI syntax see the GS1
+Digital Link standard for detailed information
+7.2.2 Symbology identification
+Each transmitted full string consists of a symbology identifier and one or more element strings (see
+section 3). The identifiers of barcode symbologies are stated in section 5.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 528 of 579
+GS1 General Specifications Standard
+7.2.3 Prefix in internal table
+System users may generate an internal table showing the GS1 Prefixes of element strings they wish
+to process. This table also serves to sort out the element strings representing item identification
+numbers in order to check their presence in the data file. Details on the respective prefixes are
+stated in section 3.
+7.2.4 Item Identification
+The symbols in the EAN/UPC symbology family contain identification data for trade items and special
+data structures (e.g., coupons). Whether an element string contains the identification of a trade
+item is determined by the GS1 Prefix. System users must determine the specific structure and
+meaning of prefixes 20 to 29 as defined by their GS1 Member Organisation.
+7.2.5 GS1 Application Identifier (AI) in internal table
+The element strings using GS1 Application Identifiers cover a wide range of applications. In order to
+keep the amount of programming on a reasonable level, it is possible to ignore processing of
+unwanted element strings. This is achieved by establishing an internal table with only the GS1
+Application Identifiers intended for processing.
+7.2.6 Length of data 14 Digits
+ITF-14 barcodes are used to represent trade item identification numbers. As the use of the general
+ITF symbology is not exclusive to the GS1 system a check to ensure the symbol encodes 14-digit
+reference field is recommended.
+7.2.7 Check digit calculation and other system checks
+In EAN/UPC symbology, the check digit verifies reading and decoding of barcodes as well as Global
+Trade Item Numbers (GTINs). This is performed automatically by the barcode reader.
+Barcode readers processing ITF-14 symbols may be programmed to verify the GTIN’s check digit as
+well. If this recommended verification has been performed, it is indicated by the symbology
+identifier ]I1 (see section 5). For data transmitted from ITF-14 symbols with symbology identifier
+]I0, the GTIN’s check digit SHALL be verified separately.
+GS1-128 and GS1 DataBar have an integral symbol check character that verifies correct decoding of
+scanned data while GS1 DataMatrix, GS1 QR Code and GS1 DotCode have a Reed Solomon error
+checking and correction feature. If an element string encoded in one of these symbol types includes
+a check digit, the check digit will not normally be verified by the barcode reader and SHALL be
+verified separately. While the data security provided by the symbol check character or error
+checking guarantees proper decoding of the entire element string, correctness of the contained
+identification number is achieved by having the application software verify the ID number’s check
+digit. Other logical tests checks are recommended for reasonable data content, such as verifying:
+■ Data field ranges (e.g., month < 13 and > 00).
+■ The maximum length of a variable length element string.
+■ No alphanumeric characters in numeric only fields.
+■ Correct GS1 Prefixes.
+7.2.8 Move element string to message field
+Several element strings may be scanned in a single transaction. In order to verify the correctness
+and completeness of the transmitted data, each element string is transferred to a message record.
+If an element string does not include a GS1 Application Identifier, verification of the message is
+simplified if a GS1 Application Identifier is internally assigned. Global Trade Item Numbers (GTINs)
+that are carried by EAN-13, UPC-A, UPC-E or ITF-14 barcodes may be denoted with an internally
+assigned AI (01). Other element strings may be assigned "ghost" GS1 Application Identifiers.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 529 of 579
+GS1 General Specifications Standard
+7.3 Validation of the electronic message regarding system consistency
+The GS1 system enables system users to process scanned data without human intervention. This
+implies that the electronic message generated from data scanned and transmitted from data carriers
+needs to substitute for all human activities during a particular transaction. In other words, the
+transmitted data must provide all information required for its correct processing.
+The GS1 system is designed to fulfil these requirements. Section 4 describes the association of
+element strings to form valid messages.
+Validation of system consistency refers to the verification of the correct composition of the electronic
+message by a system processing the transaction messages. Whether the message is adequate in
+business application terms is dealt with by the application software.
+Only messages containing a valid set of element strings defined in the GS1 system can be
+unambiguously processed. The processing of invalid messages may lead to data file errors because
+the meaning and relationship of the element strings are not defined. This is illustrated in Table 7-1
+and Table 7-2.
+Table 7-1 Examples of valid messages
+Element strings in message Comment
+AI 00 AI 33nn Identification of a logistic unit + logistic weight
+AI 00 AI 01 Identification of an entity as a logistic unit and as a fixed measure trade item
+AI 00 AI 01
+withN1
+=9'
+AI 31nn Identification of an entity as a logistic unit and as a variable measure trade
+item
+AI 00 AI 02 AI 37 Identification of a logistic unit and its contained fixed measure trade items
+AI 01 AI 10 AI 15 Identification of a trade item + lot number + best before date
+AI 00 AI 401 Identification of a logistic unit as part of a consignment
+AI 01 '9' AI 31nn AI 33nn Identification of a variable measure trade item + logistic weight
+AI 00 AI 01 AI 33nn Identification of an entity as a logistic unit and a fixed measure trade item; the
+logistic weight is associated with the identification number of the logistic unit
+AI 01 AI 710 Identification of a trade item + National Healthcare Reimbursement Number
+AI 01 AI 711 Identification of a trade item + National Healthcare Reimbursement Number
+AI 01 AI 712 Identification of a trade item + National Healthcare Reimbursement Number
+AI 01 AI 713 Identification of a trade item + National Healthcare Reimbursement Number
+AI 01 AI 714 Identification of a trade item + National Healthcare Reimbursement Number
+AI 01 AI 715 Identification of a trade item + National Healthcare Reimbursement Number
+AI 01 AI 716 Identification of a trade item + National Healthcare Reimbursement Number
+AI 01 AI 717 Identification of a trade item + National Healthcare Reimbursement Number
+Table 7-2 Examples of invalid messages
+Element strings in message Comment
+AI 00 AI 01 AI 37 Invalid identification of an entity as a logistic unit and as a fixed measure
+trade item; AI 37 (quantity of items contained) must be used with AI 02 only
+AI 01 AI 10 AI 33nn Invalid identification of a fixed measure trade item + lot number; AI 33nn is
+incorrect because logistic measures of a fixed measure trade item are fixed
+attributes stored in the data file
+AI 01'9' AI 33nn Invalid identification of a variable measure trade item + logistic weight; the
+mandatory element string with a trade measure is missing
+AI 00 AI 11 Invalid identification of a logistic unit; AI 11 is incorrect because a production
+date must be associated with the identification number of a trade item
+AI 00 AI 01 AI 02/37 Invalid identification of an entity as a logistic unit and as a fixed measure
+trade item; AI 02/37 must not be associated with AI 01
+AI 01 AI 30 Invalid identification of a fixed measure trade item; AI 30 must only be
+associated with the identification number of a variable measure trade item
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 530 of 579
+GS1 General Specifications Standard
+Element strings in message Comment
+AI 02 AI 37 Invalid identification of the fixed measure trade units contained in an
+unidentified logistic unit; AI 00 is missing
+AI 00 AI 02 Invalid identification of a logistic unit and of the contained fixed measure trade
+items; AI 02 requires the mandatory presence of AI 37 to complete the
+identification of the content
+7.4 Validation of the electronic message regarding user requirements
+Some industry groups and organisations specify the use of particular element strings for attributes
+and other information not directly identifying the item. Contrary to the validation of messages for
+system conformity, GS1 does not define the rules for the validation and application of these
+particular element strings. Validation of messages containing these element strings in these
+environments (e.g., trade item identification with best before date and batch number) is left to the
+discretion of the particular system user community.
+Validation of the correctness of a message may be performed differently for each Global Trade Item
+Number (GTIN) and instructions must be stored in the data file. System users should include the
+GS1 Application Identifiers and their specific application rules in the stored instructions.
+Validation of the user requirements must be performed after validation of system consistency.
+Missing elements in consistent messages may be by-passed or completed in given instances.
+Inconsistent messages can never be processed properly.
+7.5 Conversion of weights and measures in user applications
+All weights and measures that are encoded in the element strings with the GS1 Application
+Identifiers (31nn) to (36nn) are structured according to the same mathematical rules. The
+determination of basic units of measurement and the freedom to choose the number of decimal
+positions will lead to variations in data representation. Suppliers will choose the value that best suits
+the respective trade item in terms of weight/size and the degree of accuracy required (e.g., grams)
+for the representation of weights and measures in the six-position data field.
+The recipient of such goods also may want to store these details in a standardised form in his data
+file. This requirement is easily fulfilled through programming with the conversion formula shown
+below.
+As described in section 3, in the GS1 Application Identifier position A4 denotes the position of the
+implied decimal point, called the inverse exponent. The three-step formula to convert weights and
+measures is as follows:
+1. Define the company's internal inverse exponent in accordance with the basic unit of measure of
+the company's internal field structure (e.g., for an AI expressing weight in kilograms, inverse
+exponent 0 could signify kilograms and inverse exponent 3 could signify grams).
+2. Subtract the company's internal inverse exponent from the value of the position A4 of the GS1
+Application Identifier in the decoded element string. Call the result X.
+3. Divide the amount of the six-digit applicable value field from the decoded data string by 10x.
+The result is the value required in the company's data structure.
+In the examples in Table 7-3, the company's system uses internal weight fields eight digits in length
+(format: nnnnnnn.n) with a unit of measure equal to grams. Thus, the company uses the internal
+inverse exponent of 3.
+Table 7-3 Conversion examples
+Decoded data string Conversion Internal weight field
+GS1
+Weight Application
+Eight-digit data field defined as grams
+with one decimal position
+Identifier
+A1 A2 A3 A4
+3 1 0 0 005097
+(= 5097 kg)
+Step 2: X = 0 minus 3 = -3
+Step 3: 005097 divided by 10-3 (.001) = 5 0 9 7 0 0 0
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 531 of 579
+GS1 General Specifications Standard
+Decoded data string Conversion Internal weight field
+3 1 0 2 005097
+(= 50.97 kg)
+Step 2: X = 2 minus 3 = -1
+Step 3: 005097 divided by 10-1 (.1) = 0 0 5 0 9 7 0
+3 1 0 3 045250
+(= 45.250 kg)
+Step 2: X = 3 minus 3 = 0
+Step 3: 045250 divided by 100 (1) = 0 0 4 5 2 5 0
+3 1 0 4 012347
+(= 1234.7 g)
+Step 2: X = 4 minus 3 = 1
+Step 3: 012347 divided by 101 (10) = 0 0 0 1 2 3 4 7
+Decimal
+point
+In the examples in Table 7-4, the company’s system uses internal weight fields eight digits in length
+(format: nnnnn.nnn) with a unit of measure equal to kilograms. Thus the company uses an internal
+inverse exponent of 0
+Table 7-4 Conversion examples
+Decoded data string Conversion Internal weight field
+GS1
+Weight Application
+Eight-digit data field defined as kilograms
+with three decimal position
+Identifier
+A1 A2 A3 A4
+3 1 0 0 005097
+(= 5097 kg)
+Step 2: X = 0 minus 0 = 0
+Step 3: 005097 divided by 100 (1) = 0 5 0 9 7
+3 1 0 2 005097
+(= 50.97 kg)
+Step 2: X = 2 minus 0 = 2
+Step 3: 005097 divided by 102 (100)
+=
+0 0 0 5 0 9 7
+3 1 0 3 045250
+(= 45.250
+kg)
+Step 2: X = 3 minus 0 = 3
+Step 3: 045250 divided by 103
+(1000) =
+0 0 0 4 5 2 5
+3 1 0 4 012347
+(= 1234.7 g)
+Step 2: X = 4 minus 0 = 4
+Step 3: 012347 divided by 104
+(10000) =
+0 0 0 0 1 2 3 5
+Decimal
+point
+Position
+rounded
+7.6 Linkage of GTINs in a database
+A trade item is any item (product or service) upon which there is a need to retrieve predefined
+information and that may be priced, or ordered, or invoiced at any point in any supply chain. Trade
+items may be a single item, part, unit, product, or service, or a predefined multiple or grouping or
+combination of such items. A separate Global Trade Item Number (GTIN) identifies each of these
+items unambiguously, irrespective of the applied data structure. This also applies to identification
+numbers for restricted distribution in a closed environment.
+Information about the hierarchical structure of trade items is an important issue in a business.
+Section 7.6.1 illustrates an example of how the required links can be established by using a
+relational database.
+7.6.1 The principle
+The hierarchy for the example in Figure 7-3 is basic product = A; 10 x A = product B; 5 x B =
+product C.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 532 of 579
+GS1 General Specifications Standard
+Figure 7-3 Example of GTIN linkage in database
+See Figure 7-4 for the mechanism of linkage for the various types of trade items.
+7.6.2 Extended example of a trade item hierarchy
+Figure 7-4 Extended example of trade item hierarchy
+Note: For reasons of simplicity, Global Trade Item Numbers (GTINs) are expressed in letters
+in this example, signifying that they may be of any standardised structure.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 533 of 579
+GS1 General Specifications Standard
+Figure 7-5 Example of GTIN linkage in database
+* Quantity of items numbered A contained in item C
+Note: The columns "GTIN in database" and "GTIN of relation" are sufficient to establish the
+links between the different items. The column "Quantity of items contained" provides
+additional information, which may be useful in particular business applications. The column
+"Relation is mixed trade item" provides the relations pointing to all trade items contained in a
+mixed trade item.
+7.6.3 Linkage of GTINs in a non-relational database by trade item manufacturer
+Many types of items are produced and distributed in fixed measure nested packaging configurations
+(e.g., consumer unit, carton, case, pallet) with fixed quantity relationships. The various packaging
+configurations are often broken into lower levels at various points in the supply chain and, therefore,
+each level of the packaging may be a trade item. Computer systems must be capable of understanding
+the relationships of the units or trade items in the configuration and treating inventory of all levels of the
+configuration as one SKU (stock keeping unit).
+The first digit indicator (values 1 to 8) of the GTIN-14 data structure can be used to identify levels
+of a packaging configuration. This allows digits 2 to 13 to remain constant for all levels of the
+packaging configurations for an item. If this method of numbering item configurations is used when
+necessary to support business processes or when driven by system constraints, the non-relational
+database construct defined below may be appropriate.
+The item database is constructed with a base item record (table) and segments (tables) for each
+level of the item packaging configuration. Properly designed, this type of system can support
+pricing, ordering and shipping of any level of the packaging configuration (trade item) with
+appropriate dimension and weight information. It enables inventories to be maintained by packaging
+level and in total for the base item. It also provides channel partners or customers the choice of
+ordering and invoicing units. Meeting these requirements often makes this approach a good
+business solution for manufacturers, because it meets the most critical needs in the supply chain
+and is practical to implement, particularly in distributed and small systems where performance is
+critical.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 534 of 579
+GS1 General Specifications Standard
+Using the GTIN-14 data structure, the base item record contains the base GTIN-8, GTIN-12, or
+GTIN-13 ID Number (digits 2 to 13) as a key, with all information relating to the base unit and the
+item in total (including total inventory balance). Each of the packaging segments contains
+information unique to the respective packaging configuration (e.g., indicator, check digit, quantity
+relationship to next lower level of the configuration, dimensions, weight, prices). After accessing the
+item record using the GTIN of the base item (digits 2 to 13), the packaging segments are accessed
+using the indicator (first digit). This construct demands that:
+■ The trade item must be fixed in measure.
+■ There must be a single Global Trade Item Number (GTIN) for the base item of the related
+packaging configurations that is a GTIN-8, GTIN-12, or GTIN-13.
+■ Each related packaging configuration is limited to eight levels of packaging for the base item using
+indicator values 1 to 8.
+When storing GTIN-8s, GTIN-12s, or GTIN-13s in a 14-digit reference field or 14-digit data carrier,
+they must be stored based on rules that ensure their uniqueness.
+Companies that receive trade items with GTINs must be able to process the complete GTIN without
+regard to how it was constructed.
+7.7 Element strings represented in data carriers
+Scanned element strings are decoded as a full string by the reading device and are then transmitted
+for processing in the application software. The full string is composed of a symbology identifier and
+one or more element strings. The meaning of an element string is also determined by the data
+carrier in which it is represented.
+A synopsis by data carrier of the element strings described in these specifications is shown in Figure
+7-6, which also provides an overview of the sequential number range of trade items by data carrier.
+The element strings encoded in any GS1 symbology that uses GS1 Application Identifiers (such as
+GS1-128, GS1 DataMatrix, GS1 DataBar, GS1 QR Code, GS1 DotCode and GS1 Composite) are
+composed of one or more GS1 Application Identifiers and one or several data fields. The GS1
+Application Identifier denotes the contents and structure of the respective data fields, see section 3.
+section 7.8 provides more information on the data processing aspects.
+ITF-14 or GS1-128 barcode
+EAN-13 barcode
+UPC-A or UPC-E barcode
+EAN-8 barcode
+* * * * * * * * 0
+0
+2.
+1. 2. 1. 1. 0
+0
+2. 1. 0
+0
+4. 1. 0
+0
+2. 5. * 0
+* * * * 0
+0
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+* * * * 1
+1
+0
+3
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+* * * * 2
+2
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+* * * * 3
+9
+0
+6
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+0
+0
+0
+0
+0
+0
+1
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+* * 0
+0
+0
+0
+1
+7
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+0
+0
+0
+1
+0
+9
+8
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+* 0
+0
+2
+2
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+0
+0
+3
+3
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+* 0
+0
+4
+4
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+0
+5
+5
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+1. 0
+0
+0
+0
+6
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 535 of 579
+GS1 General Specifications Standard
+1. 0
+0
+1
+1
+0
+3
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+2. 4. *
+*
+2
+2
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+1. 0
+0
+3
+9
+0
+6
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+7. * 9
+9
+7
+7
+7
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+8. *
+*
+9
+9
+7
+7
+8
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+5. 6. * 9
+9
+8
+8
+0
+2
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+5. * 9
+9
+9
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+1. 1
+8
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+1
+1
+0
+3
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+1. 1
+8
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+3
+9
+0
+6
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+1. 3. 1
+9
+0
+0
+0
+0
+0
+0
+0
+0
+1
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+1. 3. 1
+9
+0
+0
+0
+1
+0
+9
+9
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+1. 3. 1
+9
+0
+0
+3
+3
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+1. 3. 1
+9
+0
+0
+6
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+1. 3. 1
+9
+1
+1
+0
+3
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+1. 3. 1
+9
+8. 1
+8
+3
+9
+9
+9
+0
+6
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+7
+7
+8
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+0
+9
+C
+C
+1. Fixed measure; 2. Fixed measure restricted distribution; 3. Variable measure; 4. Variable measure restricted
+distribution (not a GTIN); 5. Coupons (not a GTIN); 6. Refund receipts (not a GTIN); 7. ISSN; 8. ISBN
+Figure 7-6 Element strings by data carrier
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 536 of 579
+GS1 General Specifications Standard
+7.8 Processing of data from a GS1 symbology using GS1 Application
+Identifiers
+Figure 7-7 Data processing overview
+This system logic holds true for any GS1 symbology using GS1 Application Identifiers. The
+symbology identifiers listed in Figure 7-7 are:
+■ ]C1 = GS1-128.
+■ ]e0 = GS1 DataBar and GS1 Composite symbols.
+■ ]d2 = GS1 DataMatrix.
+■ ]Q3 = GS1 QR Code.
+■ ]J1 = GS1 DotCode.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 537 of 579
+GS1 General Specifications Standard
+7.8.1 General
+Any GS1 symbology using GS1 Application Identifiers may represent several element strings in
+concatenated form (see section 5).
+For processing as shown in section 7.3, it is necessary to separate each element string, which is
+performed by the processing routine illustrated in Figure 7-7.
+7.8.2 GS1 Application Identifier lengths
+Assigned GS1 Application Identifiers have a defined length. Each GS1 Application Identifier is 2, 3 or
+4 digits in length. Knowing these lengths can assist in processing data strings. When a GS1
+Application Identifier is approved for application use, the length of the GS1 AI is defined. All GS1 AIs
+beginning with the same two lead digits SHALL have the same length. Table 7-5 provides the
+defined lengths of GS1 AIs based on the leading two digits.
+Table 7-5 GS1 Application Identifier lengths
+First 2
+GS1 AI
+First 2
+GS1 AI
+First 2
+GS1 AI
+First 2
+GS1 AI
+First 2
+GS1 AI
+digits
+length
+digits
+length
+digits
+length
+digits
+length
+digits
+length
+00 2 17 2 33 4 70 4 94 2
+01 2 20 2 34 4 71 3 95 2
+02 2 21 2 35 4 72 4 96 2
+03 2 22 2 36 4 80 4 97 2
+10 2 23 3 37 2 81 4 98 2
+11 2 24 3 39 4 82 4 99 2
+12 2 25 3 40 3 90 2
+13 2 30 2 41 3 91 2
+15 2 31 4 42 3 92 2
+16 2 32 4 43 4 93 2
+7.8.3 Element strings with predefined lengths using GS1 Application Identifiers
+Representation of more than one element string in a GS1 symbology using GS1 Application
+Identifiers may require the use of a separator character between the different element strings to
+mark their end.
+However, in order to enable printing of smaller barcodes, some element strings have been
+predefined in length, so that their end is determined and a separator character SHOULD NOT be
+used. These element strings are shown in the predefined table in Table 7-6. All other element
+strings, even if defined as fixed length in section 3, are not of predefined length and are formally
+variable length fields which require a separator character if followed by another element string.
+A separator character SHOULD NOT be used at the end of the last element string represented in a
+barcode or for certain AI combinations defined by the symbology specification (e.g., some types of
+GS1 DataBar).
+7.8.4 The separator character and its value
+In GS1-128 symbology: The Function 1 Symbol Character (FNC1) SHOULD be the separator
+character, and the control character <GS> (ASCII value 29 (decimal), 1D (hexadecimal)) may be an
+alternative.
+In GS1 DataMatrix and GS1 DotCode symbology: The Function 1 Symbol Character (FNC1) or the
+control character <GS> SHALL be the separator character.
+In GS1 QR Code symbology: The control character <GS> or the character ‘%’ (ASCII value 37
+(decimal), 25 (hexadecimal)) SHALL be the separator character.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 538 of 579
+GS1 General Specifications Standard
+In GS1 DataBar and GS1 Composite symbology: The Function 1 Symbol Character (FNC1) SHALL be
+the separator character.
+The value of the decoded separator character transmitted in the decoded data string is always
+control character <GS> (ASCII value 29 (decimal), 1D (hexadecimal)). It is important to note that
+some receiving systems may convert/interpret the control character <GS> as something other than
+ASCII value 29 (decimal), 1D (hexadecimal).
+All element strings not included in the predefined table shown in Table 7-6 MUST be separated by a
+separator character when followed by another element string in a single barcode.
+7.8.5 The basic structure of GS1 barcodes using GS1 Application Identifiers and
+concatenation
+GS1 barcode symbologies that use GS1 Application Identifiers generally have a particular symbol
+character to indicate that the data is encoded according to the GS1 Application Identifier rules. For
+example, the GS1-128 symbology uses the Function 1 Symbol Character (FNC1) in the position
+immediately following the start character. This character pattern is reserved for GS1 system
+applications worldwide and makes it possible to distinguish GS1-128 barcodes from Code 128
+symbols encoding non-GS1 data.
+Start
+Function 1
+character
+Symbol
+Element string(s) Symbol check
+character
+Stop
+character
+A , B, or C
+Character
+(FNC1)
+GS1
+Application
+Identifier
+Data field
+Figure 7-8 Example GS1-128 barcode structure
+All GS1 barcode symbologies that use GS1 Application Identifiers allow several element strings to be
+encoded in one barcode, a process called concatenation. Concatenation is advantageous because it
+means that the symbol’s double start, symbol check and stop characters are only needed once and
+the space required for the symbol is smaller than when separate barcodes are used to encode each
+element string. It also improves scanning accuracy, allowing for single scanning rather than multiple
+scanning. The various element strings are transmitted from the barcode reader as a single full
+string.
+The various element strings, which are transmitted from concatenated barcodes, have to be
+analysed and processed. All element strings need to be separated by a separator character unless
+they have a predefined length or appear at the end of the symbol (encoded immediately before the
+symbol check character). All predefined length element strings are contained in Table 7-6).
+The separator character SHALL be either the Function 1 Symbol Character (FNC1), or the control
+character <GS> (ASCII value 29 (decimal), 1D (hexadecimal)), or, in the case of GS1 QR Code
+symbology, the control character <GS> or the character ‘%’ (ASCII value 37 (decimal), 25
+(hexadecimal)). Table 7-6 contains all element strings that have a predefined length and, therefore,
+SHOULD NOT be terminated by a separator character.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 539 of 579
+GS1 General Specifications Standard
+Table 7-6 Element strings with predefined length using GS1 Application Identifiers
+First two digits of the GS1
+Number of characters
+Application Identifier
+(GS1 Application Identifier and data field)
+00 20
+01 16
+02 16
+03 16
+(04) 18
+11 8
+12 8
+13 8
+(14) 8
+15 8
+16 8
+17 8
+(18) 8
+(19) 8
+20 4
+31 10
+32 10
+33 10
+34 10
+35 10
+36 10
+41 16
+Note: Table 7-6 is limited to the listed numbers and will remain unchanged. Those numbers
+in parentheses are not yet assigned. GS1 Application Identifiers starting with two digits that are
+not included in Table 7-6 have a variable length even if the definition of the GS1 Application
+Identifier specifies a fixed length data field.
+7.8.6 Concatenation
+7.8.6.1 Predefined length element strings
+Concatenated element strings constructed from GS1 Application Identifiers with a predefined length
+SHOULD NOT use a separator character following the element string of predefined length. Each
+element string is immediately followed by either the next GS1 Application Identifier or the symbol
+check character and stop character.
+For example, concatenation of net weight (4.00 kilograms) with the associated Global Trade Item
+Number (GTIN) 95012345678903 SHOULD NOT include the use of a separator character.
+■ (01) has a predefined element string length of 16 digits.
+■ (31nn) has a predefined element string length of 10 digits.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 540 of 579
+GS1 General Specifications Standard
+GTIN 95012345678903 Net weight 4.00 kg
+Figure 7-9 Data encoded in two GS1-128 symbols
+GTIN 95012345678903 Net weight 4.00 kg
+Figure 7-10 Data encoded in one concatenated GS1-128 symbol
+7.8.6.2 Non-predefined length element strings
+An element string that does not start with two characters defined in Table 7-6 SHALL be terminated by a
+separator character, unless it is the last element string to be encoded, when a separator character
+SHOULD NOT be used. The separator character is placed immediately after a non-predefined length
+element string and is followed by the GS1 Application Identifier of the next element string. The separator
+character used is either the Function 1 Symbol Character (FNC1) or the control character <GS> (ASCII
+value 29 (decimal), 1D (hexadecimal)) and it is always represented in the transmitted message by the
+control character <GS> (ASCII value 29 (decimal), 1D (hexadecimal)). If the element string is the last
+to be encoded, it is followed by the Symbol Check and stop characters.
+For example, concatenation of price per unit of measure (365 currency units) and batch number
+(123456) MUST use a separator character immediately after the price per unit of measure.
+Price per unit of measure 365 Batch number 123456
+Figure 7-11 Data encoded in two GS1-128 symbols
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 541 of 579
+GS1 General Specifications Standard
+Price per unit of measure 365 Batch number 123456
+Figure 7-12 Data encoded in one concatenated GS1-128 symbol
+Note: The FNC1 is not shown in human readable interpretation.
+7.8.6.3 Other considerations when using concatenation
+Concatenation is an effective means for presenting multiple element strings in a single barcode and
+is used to conserve label space and optimise scanning operations when permitted by the application
+standard.
+When concatenating a mixture of predefined length and other element strings, the predefined
+element strings SHOULD appear together before the other element strings. This usually results in a
+shorter linear barcode.
+The separator character appears in the decoded data string as control character <GS> (ASCII value
+29, (decimal), 1D (hexadecimal)). A separator character SHOULD NOT be used at the end of the last
+element string encoded in a GS1 barcode.
+Notwithstanding the above, the processing routine SHALL tolerate a single separator character
+immediately following any element string, whether necessary or not, and process the data in
+accordance with section 7.8 Processing of data from a GS1 symbology using GS1 Application
+Identifiers.
+(01)90614141000015(3202)000150
+Figure 7-13 Example of GS1 DataBar Expanded Stacked barcode that uses concatenation
+Concatenation may not be desirable in all circumstances (e.g., GS1 Logistic Labels are often
+constructed using multiple rows of barcode), in such cases the barcode containing the additional
+attribute data encoded using GS1 Application Identifiers SHOULD be printed in close proximity to
+the barcode containing the GS1 identification key.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 542 of 579
+GS1 General Specifications Standard
+(15)021231
+Figure 7-14 Example of mixed GS1 symbologies
+(GTIN encoded in UPC-E, Best before date in Composite)
+7.8.7 GS1 Application Identifiers with implied decimal point positions
+For all GS1 Application Identifiers with an implied decimal point position, the following rules apply:
+For predefined length AIs
+■ For predefined length GS1 Application Identifiers with a data field length of 9 or less, the
+maximum number of decimal places is equal to the length of the AI data field as indicated in the
+format of the GS1 Application Identifier, minus 1. For example, for an AI with data format N8
+the maximum number of decimal places is 7.
+■ For predefined length GS1 Application Identifiers with a length greater than 9, the maximum
+number of decimal places is 9. For example, for an AI with data format N12 the maximum
+number of decimal places is 9.
+Example for predefined length AIs:
+The data field format of AI (394n) is N4, so the maximum number of implied decimal places is 3.
+Element string (3943)1020 specifies that the data field includes 3 decimal places and therefore has
+an implied decimal point after the first digit: 1.020
+For variable-length AIs
+■ For variable-length GS1 Application Identifiers with encoded data of 9 digits or less, the
+maximum number of decimal places is equal to the length of the encoded data, minus 1. For
+example, for a data field containing 4 digits the maximum number of decimal places is 3.
+■ For variable-length GS1 Application Identifiers with encoded data of more than 9 digits, the
+maximum number of decimal places is 9. For example, for a data field containing 11 digits the
+maximum number of decimal places is 9.
+Example for variable-length AIs:
+The data field format of AI (392n) is N..15, so the maximum number of implied decimal places is 9.
+Element string (3929)300123456789 specifies a data field of 12 digits that includes 9 decimal places
+and therefore has an implied decimal point after the third digit: 300.123456789.
+Element string (3923)3000200 specifies a data field of 7 digits that includes 3 decimal places and
+therefore has an implied decimal point after the fourth digit: 3000.200
+Note: Consult the specific GS1 Application Identifier for additional restrictions that may apply
+to that GS1 Application Identifier.
+7.8.8 National Healthcare Reimbursement Number (NHRN)
+Some national or regional regulatory organisations may require pharmaceuticals and/or medical
+devices be identified with locally specific National Healthcare Reimbursement Numbers (NHRNs). For
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 543 of 579
+GS1 General Specifications Standard
+compliance with these national/regional regulatory or industry requirements where the GTIN does
+not meet current need, the trade item SHALL be identified with GTIN and AIs (710), (711), (712),
+(713), (714), (715) and (716) National Healthcare Reimbursement Number.
+One or more NHRNs may be associated with a single GTIN and encoded within the appropriate GS1
+Data carrier in order to meet multiple market business needs. See Table 7-7 for examples of
+multiple NHRNs.
+Additional individual NHRN AIs can only be assigned by GS1 and only in response to a work request
+being submitted through GSMP.
+Table 7-7 Examples of valid messages
+Element strings in message Comment
+AI
+01
+AI
+710
+GTIN Identification of a trade item + Country “A” NHRN
+AI
+01
+AI
+710
+AI
+711
+GTIN Identification of a trade item + Country “A” NHRN +
+Country “B” NHRN
+AI
+01
+AI
+710
+AI
+711
+AI
+712
+GTIN Identification of a trade item + Country “A” NHRN +
+Country “B” NHRN + Country “C” NHRN
+AI
+01
+AI
+710
+AI
+711
+AI
+712
+AI
+713
+GTIN Identification of a trade item + Country “A” NHRN +
+Country “B” NHRN + Country “C” NHRN + Country “D”
+NHRN
+AI
+01
+AI
+710
+AI
+711
+AI
+712
+AI
+713
+AI
+714
+GTIN Identification of a trade item + Country “A” NHRN +
+Country “B” NHRN + Country “C” NHRN + Country “D”
+NHRN + Country “E” NHRN
+AI
+01
+AI
+710
+AI
+711
+AI
+712
+AI
+713
+AI
+714
+AI
+715
+GTIN Identification of a trade item + Country “A” NHRN +
+Country “B” NHRN + Country “C” NHRN + Country “D”
+NHRN + Country “E” NHRN + Country “F” NHRN
+AI
+01
+AI
+710
+AI
+711
+AI
+712
+AI
+713
+AI
+714
+AI
+715
+AI
+716
+AI
+717
+GTIN Identification of a trade item + Country “A” NHRN +
+Country “B” NHRN + Country “C” NHRN + Country “D”
+NHRN + Country “E” NHRN + Country “F” NHRN + Country
+“G” NHRN + Country “H” NHRN
+7.9 Check digit/character calculations
+7.9.1 Standard check digit calculations for GS1 data structures
+This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN,
+GRAI, etc.) that require a check digit.
+Table 7-8 Check digit algorithm
+Digit positions
+GTIN-8 N1 N2 N3 N4 N5 N6 N7 N8
+GTIN-12 N1 N2 N3 N4 N5 N6 N7 N8 N9 N10 N11 N12
+GTIN-13 N1 N2 N3 N4 N5 N6 N7 N8 N9 N10 N11 N12 N13
+GTIN-14 N1 N2 N3 N4 N5 N6 N7 N8 N9 N10 N11 N12 N13 N14
+17 digits N1 N2 N3 N4 N5 N6 N7 N8 N9 N10 N11 N12 N13 N14 N15 N16 N17
+18 digits N1 N2 N3 N4 N5 N6 N7 N8 N9 N10 N11 N12 N13 N14 N15 N16 N17 N18
+Multiply value of each position by
+x3 X1 x3 x1 x3 x1 x3 x1 x3 x1 x3 x1 x3 x1 x3 x1 x3
+Accumulated results = sum
+Subtract sum from nearest equal or higher multiple of ten = check digit 
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 544 of 579
+GS1 General Specifications Standard
+Table 7-9 Check digit calculation example
+Example of a check digit calculation for the 18-digit field
+Positions N1 N2 N3 N4 N5 N6 N7 N8 N9 N10 N11 N12 N13 N14 N15 N16 N17 N18
+Number without
+check digit 3 7 Step 1: multiply by x x 3 1 Step 2: add up results to sum = = 6 1 0 4 2 5 0 0 2 1 2 3 4 5 6
+x x x x x x x x x x x x x x x
+3 1 3 1 3 1 3 1 3 1 3 1 3 1 3
+= = = = = = = = = = = = = = =
+18 1 0 4 6 5 0 0 6 1 6 3 12 5 18 =
+101
+Step 3: Subtract sum from nearest equal or higher multiple of ten (110) = check digit (9)
+Number with
+3 7 6 1 0 4 2 5 0 0 2 1 2 3 check digit
+4 5 6 9
+9 7 7.9.2 Check digit calculation for price/weight fields
+To increase the security of reading a price or weight from a barcode, the check digit for these fields
+is not only calculated according to the methods described in the previous section, but also according
+to the procedure described in this section.
+The basic principle of the check digit calculation is that each digit position in a price/weight field is
+assigned a weighting factor. Weighting factors are 2-, 3, 5+ and 5-. Each weighting factor affects
+the particular calculation for the position concerned. The result of such a calculation is called a
+weighted product. The tables that follow show the weighted products of the various weighting
+factors.
+Table 7-10 Weighting factor 2
+Weighting factor 2
+Calculation rule: The digit is multiplied by 2. If the result has two digits, the tens digit is
+subtracted from the units digit. The units digit resulting is the weighted product.
+Digit
+Weighted product
+0
+0
+1
+2
+2
+4
+3
+6
+4
+8
+5
+9
+6
+1
+7
+3
+8
+5
+9
+7
+Table 7-11 Weighting factor 3
+Weighting factor 3
+Calculation rule: The digit is multiplied by 3. The unit's digit of the result is the weighted product.
+Digit
+Weighted product
+0
+0
+1
+3
+2
+6
+3
+9
+4
+2
+5
+5
+6
+8
+7
+1
+8
+4
+9
+7
+Table 7-12 Weighting factor 5+
+Weighting factor 5+
+Calculation rule: The digit is multiplied by 5. The units digit and the tens digit of the result are
+added together. The result of this sum is the weighted product.
+Digit
+Weighted product
+0
+0
+1
+5
+2
+1
+3
+6
+4
+2
+5
+7
+6
+3
+7
+8
+8
+4
+9
+9
+Table 7-13 Weighting factor 5-
+Weighting factor 5-
+Calculation rule: The digit is multiplied by 5. The tens digit of the result is subtracted from the
+result. The unit's digit of the result of this subtraction is the weighted product.
+Digit
+Weighted product
+0
+0
+1
+5
+2
+9
+3
+4
+4
+8
+5
+3
+6
+7
+7
+2
+8
+6
+9
+1
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 545 of 579
+GS1 General Specifications Standard
+7.9.3 Check digit calculation for the four-digit price field
+Table 7-14 Assigned weighting factors
+Assigned weighting factors
+Digit position Weighting factor 1 2 2- 2- 3 4
+3 5-
+■ Calculation step 1: Determine the weighted product for each number in Positions One to Four
+according to the assigned weighting factors.
+■ Calculation step 2: Add the products of step 1.
+■ Calculation step 3: Multiply the result of step 2 by the factor 3. The unit's digit of the result is
+the check digit.
+Table 7-15 Example of a check digit calculation
+Example of a check digit calculation
+Position of price field 1 2 3 4
+Assigned weighting factor 2- 2- 3 5-
+Amount 2 8 7 5
+Step 1: weighted product according to
+figure 4 5 1 3
+Step 2: sum + + + + = 1 3
+Step 3: multiply by 3 = 3 9 (*)
+(*) Unit position is the check digit.
+7.9.4 Check digit calculation for the five-digit price field
+Table 7-16 Assigned weighting factors
+Assigned weighting factors
+Digit positions Weighting factor 1 2 5+ 2- 3 4 5
+5- 5+ 2-
+■ Calculation step 1: Determine the weighted product for each number in positions one to five
+according to the assigned weighting factors.
+■ Calculation step 2: Add the products of step 1.
+■ Calculation step 3: Subtract the result from the nearest equal or higher multiple of 10.
+■ Calculation step 4: Take the result and search for the same number in the weighted product
+row of Table 7-17. The check digit is the number in the digit row of the same column.
+Table 7-17 Example of a check digit calculation
+Example of a check digit calculation
+Price field positions 1 2 3 4 5
+Assigned weighting factor 5+ 2- 5- 5+ 2-
+Amount 1 4 6 8 5
+Step 1: weighted product according to figure 5 8 7 4 9
++ + + + + = 33
+Step 2: sum Step 3: result of subtraction (40 - 33) Step 4: weighted product 7 in the figure weighting factor 5- shows number 6 to be the check digit.
+= 7
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 546 of 579
+GS1 General Specifications Standard
+7.9.5 Check character calculation (for alphanumeric keys)
+GS1's check character algorithm uses MOD 1021,32 to calculate the check character pair for use in
+alphanumeric data structures (GS1 AI encodable character set, see section 7.11). The check
+character pair utilises uppercase alpha and numeric characters (see below). The check character set
+reduces potential keying errors by removing 0, O and 1, I (similar looking numeric alpha characters)
+from the possible results. The check character pairing also becomes more readily recognised due to
+the uppercase alpha numeric character structure. The check character pair enables the detection of
+various keying and encoding errors, including but not limited to:
+■ Character substitution(s)
+■ Character transposition(s)
+■ Logical shifts
+■ Character addition(s)
+■ Character omission(s)
+Check character calculation steps:
+■ Calculation step 1: For each character, retrieve the assigned reference value from Table 7-18.
+■ Calculation step 2: Each symbol character position is given a prime number weight. Beginning
+with the right most non-check character (Xj) and progressing left to first character (N1) the
+prime weight increases 2, 3, 5, 7, 11, 13, to Wn; “Wn” denotes the nth prime number where “n”
+is the number of characters representing data not including the check character pair.
+■ Calculation step 3: Multiply each assigned reference value (from step 1) by the weight (from
+step 2).
+■ Calculation step 4: Total the results of the calculations in step 3.
+■ Calculation step 5: Perform a MOD 1021 on the sum of the products (step 4).
+■ Calculation step 6: The result of step 5 is the check character’s reference value.
+■ Calculation step 7: Based on the check character’s reference value (Ck), determine the GMN
+check character using the following:
+a. Ck = C1 * 32 + C2, (C1, C2 are the assigned reference values for Table 7-18)
+i. C1 = INT (Ck / 32), (the whole number to the left of the decimal)
+ii. C2 = Ck MOD 32
+b. Retrieve the alphanumeric characters for Xj+1 and Xj+2 using C1 and C2
+Table 7-18 GS1 AI encodable character reference values
+Character
+Assigned
+Character
+Assigned
+Character
+Assigned
+set
+value
+set
+value
+set
+value
+! 0 B 30 e 60
+" 1 C 31 f 61
+% 2 D 32 g 62
+& 3 E 33 h 63
+' 4 F 34 i 64
+( 5 G 35 j 65
+) 6 H 36 k 66
+* 7 I 37 l 67
++ 8 J 38 m 68
+, 9 K 39 n 69
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 547 of 579
+GS1 General Specifications Standard
+Character
+Assigned
+Character
+Assigned
+Character
+Assigned
+set
+value
+set
+value
+set
+value
+- 10 L 40 o 70
+. 11 M 41 p 71
+/ 12 N 42 q 72
+0 13 O 43 r 73
+1 14 P 44 s 74
+2 15 Q 45 t 75
+3 16 R 46 u 76
+4 17 S 47 v 77
+5 18 T 48 w 78
+6 19 U 49 x 79
+7 20 V 50 y 80
+8 21 W 51 z 81
+9 22 X 52
+: 23 Y 53
+; 24 Z 54
+< 25 _ 55
+= 26 a 56
+> 27 b 57
+? 28 c 58
+A 29 d 59
+Table 7-19 Check character reference values
+Character
+Assigned
+Character
+Assigned
+Character
+Assigned
+set
+value
+set
+value
+set
+value
+2 0 D 11 Q 22
+3 1 E 12 R 23
+4 2 F 13 S 24
+5 3 G 14 T 25
+6 4 H 15 U 26
+7 5 J 16 V 27
+8 6 K 17 W 28
+9 7 L 18 X 29
+A 8 M 19 Y 30
+B 9 N 20 Z 31
+C 10 P 21
+Position P1 P2 P3 P4 P5 P6 P7 P8 P9 P10 P11 P12 P13 P14
+GMN 1 9 8 7 6 5 4 A d 4 X 4 b L
+Assigned value 14 22 21 20 19 18 17 29 59 17 52 17 57 40
+Multiply by weighting
+factor (Wn)
+X
+83
+X
+79
+X
+73
+X
+71
+X
+67
+X
+61
+X
+59
+X
+53
+X
+47
+X
+43
+X
+41
+X
+37
+X
+31
+X
+29
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 548 of 579
+GS1 General Specifications Standard
+Results to sum 1162 1738 1533 1420 1273 1098 1003 1537 2773 731 2132 629 1767 1160
+Example of a check character calculation for 25-character GMN continued
+Position P15 P16 P17 P18 P19 P20 P21 P22 P23 P24 P25
+GMN 5 t t r 2 3 1 0 c 2 K
+Assigned value 18 75 75 73 15 16 14 13 58
+Multiply by weighting
+factor (Wn)
+X
+23
+X
+19
+X
+17
+X
+13
+X
+11
+X
+7
+X
+5
+X
+3
+X
+2
+Results to sum 414 1425 1275 949 165 112 70 39 116
+Summary totals
+Sum weighted assigned values 24521
+MOD 1021 for the sum weighted assigned values Integer Results of MOD 1021 Sum weighted assigned values divided by 32 0
+Remainder of MOD 1021 Sum weighted assigned values multiplied by 32 17
+17
+Check character for position P24 referenced from Table 7-19 2
+Check character for position P25 referenced from Table 7-19 K
+Figure 7-15 Example of a check character calculation (based on 25 character Global Model Number)
+7.10 GTIN-12 and RCN-12 in a UPC-E barcode
+Some of the GTIN-12 and RCN-12 number ranges beginning with the U.P.C. Prefix 0 may be
+represented in a small symbol called the UPC-E barcode (see section 2.1).
+The GTIN-12 or RCN-12 is condensed into a barcode consisting of six symbol character positions.
+For application processing, the GTIN-12 or RCN-12 must be transformed into its full length by the
+barcode reader software or by the application software. There is no six-digit UPC-E barcode.
+It is possible to create false UPC-E barcodes if the encodation rules are not properly observed.
+Whether the digits represented in a UPC-E barcode can be expanded correctly to a GTIN-12 is
+verified by the following tests.
+Test 1:
+Verify the digits encoded in Positions 1 to 6 of the UPC-E barcode according to the diagram below.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 549 of 579
+GS1 General Specifications Standard
+* These UPC-E barcodes were valid in previous specifications. Provision for accepting them must be made during
+decoding only.
+Figure 7-16 Procedure for test 1
+Test 2:
+Expand the digits encoded in the UPC-E barcode to the first 11 digits of the full length GTIN-12,
+calculate the check digit and compare it with the check digit decoded from the UPC-E barcode. If
+they do not match, it signifies an invalid symbol.
+7.11 The GS1 subset of International Standard ISO/IEC 646
+Table 7-20 lists all characters allowed for use in GS1 Application Identifier (AI) element strings with
+the exception of the Component and Parts Identifier and Digital Signatures (DigSig). Table 7-20
+corresponds to ISO/IEC 646 Table 1. All other ISO 646 characters that are not listed here are not
+allowed in GS1 Application Identifier (AI) element strings. Table 7-21 lists all the characters allowed
+for use in the GS1 Application Identifier for Component and Parts Identifier. Table 7-22 lists all the
+characters allowed for use in the GS1 Application Identifier (AI) for Digital Signatures (DigSig).
+Note that some transport process information may include accented / non-Latin characters and
+space characters which are not available in the subset of ISO/IEC 646 International Reference
+Version defined in Table 7-20. Some AIs in the range 4300 – 4320 may use the characters from the
+Table 7-20 in conjunction with percent-encoding as defined in RFC 3986 in order to support non-
+Latin characters, with the plus sign (+) being accepted as a way of encoding a literal space
+character.
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 550 of 579
+GS1 General Specifications Standard
+Table 7-20 GS1 AI encodable character set 82
+Graphic
+Name Coded
+Graphic
+Name Coded
+symbol
+representation
+symbol
+representation
+! Exclamation mark 2/1 M Capital letter M 4/13
+" Quotation mark 2/2 N Capital letter N 4/14
+% Percent sign 2/5 O Capital letter O 4/15
+& Ampersand 2/6 P Capital letter P 5/0
+' Apostrophe 2/7 Q Capital letter Q 5/1
+( Left parenthesis 2/8 R Capital letter R 5/2
+) Right parenthesis 2/9 S Capital letter S 5/3
+* Asterisk 2/10 T Capital letter T 5/4
++ Plus sign 2/11 U Capital letter U 5/5
+, Comma 2/12 V Capital letter V 5/6
+- Hyphen/Minus 2/13 W Capital letter W 5/7
+. Full stop 2/14 X Capital letter X 5/8
+/ Solidus 2/15 Y Capital letter Y 5/9
+0 Digit zero 3/0 Z Capital letter Z 5/10
+1 Digit one 3/1 _ Low line 5/15
+2 Digit two 3/2 a Small letter a 6/1
+3 Digit three 3/3 b Small letter b 6/2
+4 Digit four 3/4 c Small letter c 6/3
+5 Digit five 3/5 d Small letter d 6/4
+6 Digit six 3/6 e Small letter e 6/5
+7 Digit seven 3/7 f Small letter f 6/6
+8 Digit eight 3/8 g Small letter g 6/7
+9 Digit nine 3/9 h Small letter h 6/8
+: Colon 3/10 i Small letter i 6/9
+; Semicolon 3/11 j Small letter j 6/10
+< Less-than sign 3/12 k Small letter k 6/11
+= Equals sign 3/13 l Small letter l 6/12
+> Greater-than sign 3/14 m Small letter m 6/13
+? Question mark 3/15 n Small letter n 6/14
+A Capital letter A 4/1 o Small letter o 6/15
+B Capital letter B 4/2 p Small letter p 7/0
+C Capital letter C 4/3 q Small letter q 7/1
+D Capital letter D 4/4 r Small letter r 7/2
+E Capital letter E 4/5 s Small letter s 7/3
+F Capital letter F 4/6 t Small letter t 7/4
+G Capital letter G 4/7 u Small letter u 7/5
+H Capital letter H 4/8 v Small letter v 7/6
+I Capital letter I 4/9 w Small letter w 7/7
+J Capital letter J 4/10 x Small letter x 7/8
+K Capital letter K 4/11 y Small letter y 7/9
+L Capital letter L 4/12 z Small letter z 7/10
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 551 of 579
+GS1 General Specifications Standard
+Table 7-21 GS1 AI encodable character set 39
+Graphic
+Name Coded
+Graphic
+Name Coded
+symbol
+representation
+symbol
+representation
+# Number Sign 2/3 H Capital letter H 4/8
+- Hyphen/Minus 2/13 I Capital letter I 4/9
+/ Solidus 2/15 J Capital letter J 4/10
+0 Digit zero 3/0 K Capital letter K 4/11
+1 Digit one 3/1 L Capital letter L 4/12
+2 Digit two 3/2 M Capital letter M 4/13
+3 Digit three 3/3 N Capital letter N 4/14
+4 Digit four 3/4 O Capital letter O 4/15
+5 Digit five 3/5 P Capital letter P 5/0
+6 Digit six 3/6 Q Capital letter Q 5/1
+7 Digit seven 3/7 R Capital letter R 5/2
+8 Digit eight 3/8 S Capital letter S 5/3
+9 Digit nine 3/9 T Capital letter T 5/4
+A Capital letter A 4/1 U Capital letter U 5/5
+B Capital letter B 4/2 V Capital letter V 5/6
+C Capital letter C 4/3 W Capital letter W 5/7
+D Capital letter D 4/4 X Capital letter X 5/8
+E Capital letter E 4/5 Y Capital letter Y 5/9
+F Capital letter F 4/6 Z Capital letter Z 5/10
+G Capital letter G 4/7 Intentionally left blank
+Table 7-22 GS1 AI encodable character set 64 (file-safe / URI-safe base64)
+Value Graphic
+Name Coded
+Value Graphic
+Name Coded
+symbol
+representation
+symbol
+representation
+0 A Capital letter A 4/1 32 g Small letter g 6/7
+1 B Capital letter B 4/2 33 h Small letter h 6/8
+2 C Capital letter C 4/3 34 i Small letter i 6/9
+3 D Capital letter D 4/4 35 j Small letter j 6/10
+4 E Capital letter E 4/5 36 k Small letter k 6/11
+5 F Capital letter F 4/6 37 l Small letter l 6/12
+6 G Capital letter G 4/7 38 m Small letter m 6/13
+7 H Capital letter H 4/8 39 n Small letter n 6/14
+8 I Capital letter I 4/9 40 o Small letter o 6/15
+9 J Capital letter J 4/10 41 p Small letter p 7/0
+10 K Capital letter K 4/11 42 q Small letter q 7/1
+11 L Capital letter L 4/12 43 r Small letter r 7/2
+12 M Capital letter M 4/13 44 s Small letter s 7/3
+13 N Capital letter N 4/14 45 t Small letter t 7/4
+14 O Capital letter O 4/15 46 u Small letter u 7/5
+15 P Capital letter P 5/0 47 v Small letter v 7/6
+16 Q Capital letter Q 5/1 48 w Small letter w 7/7
+17 R Capital letter R 5/2 49 x Small letter x 7/8
+18 S Capital letter S 5/3 50 y Small letter y 7/9
+19 T Capital letter T 5/4 51 z Small letter z 7/10
+20 U Capital letter U 5/5 52 0 Digit zero 3/0
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 552 of 579
+GS1 General Specifications Standard
+Value Graphic
+Name Coded
+Value Graphic
+Name Coded
+symbol
+representation
+symbol
+representation
+21 V Capital letter V 5/6 53 1 Digit one 3/1
+22 W Capital letter W 5/7 54 2 Digit two 3/2
+23 X Capital letter X 5/8 55 3 Digit three 3/3
+24 Y Capital letter Y 5/9 56 4 Digit four 3/4
+25 Z Capital letter Z 5/10 57 5 Digit five 3/5
+26 a Small letter a 6/1 58 6 Digit six 3/6
+27 b Small letter b 6/2 59 7 Digit seven 3/7
+28 c Small letter c 6/3 60 8 Digit eight 3/8
+29 d Small letter d 6/4 61 9 Digit nine 3/9
+30 e Small letter e 6/5 62 - Hyphen/minus 2/13
+31 f Small letter f 6/6 63 _ Low line /
+underscore /
+underline
+5/15
+Intentionally left blank N/A = Equals (pad
+character)
+3/13
+Note 1: The permitted characters for use with AI (8030) Digital Signature (DigSig) are the
+GS1 encodable character set 64 (file-safe / URI-safe base64) ordered alphabet as defined in
+section 5 of RFC 4648, which consists of the upper-case letters A-Z, lower-case letters a-z,
+digits 0-9, hyphen (-), low line/underscore/underline (_) and the equals character (=) as a
+special pad character (Table 7-22).
+These 65 characters – a total of 64 characters and the special pad character - are a subset of
+the GS1 AI encodable character set 82 (Table 7-20). A maximum length of 90 characters
+corresponds to a maximum capacity of 540 bits. Although a Digital Signature (DigSig) AI
+(8030) value may contain a Base64 pad character (=), it can be removed without causing any
+loss of information. When expressed within the query string of a GS1 Digital Link URI, the
+Base64 pad character (=) SHOULD be removed, in accordance with section 5 of RFC 4648,
+however if it is required, the Base64 pad character SHALL be percent-encoded, as defined in
+RFC 3986
+7.12 Note also that these characters are not freely chosen by the user but are instead a compact
+representation of a binary value for the calculated ISO/IEC 20248 data construct which
+contains the digital signature, expressed using one file-safe/URI-safe base64 character per 6
+bits.
+Determination of century in dates
+Element strings are available for the following types of dates:
+■ Production date: AI (11).
+■ Due date: AI (12).
+■ Packaging date: AI (13).
+■ Best before date: AI (15).
+■ Sell by date: AI (16).
+■ Expiration date: AI (17).
+■ Expiration date and time: AI (7003).
+■ First freeze date: AI (7006).
+Release 26.0, Ratified, Jan 26 © 2026 GS1 AISBL Page 553 of 579
+GS1 General Specifications Standard
+■ Harvest date: AI (7007).
+■ Date and time of production: AI (8008).
+It is left to the discretion of the user to interpret a particular date type in the sense of his business
+practices. Such interpretation may change according to the product range for which a date is being
+applied.
+Since the year data field consists of two positions, the century is established by following the
+procedure in the figure below.
+Figure 7-17 Determination of century
+Note: The element string can only specify a date in the range from 49 years in the past to 50
+years in the future of the current year
+7.13 Conversion of latitude and longitude to twenty-digit string
+A latitude and longitude (both expressed in decimal degrees using the WGS84 coordinate reference
+system) can be converted into two 10-digit fields, X and Y as follows:
+■ X = 10,000,000 * (WGS84 latitude + 90)
+■ Y = 10,000,000 *((WGS84 longitude + 360) mod 360)
+■ X and Y SHALL be integer values.
+Note: The WGS84 latitude and longitude SHOULD be expressed with no more than 7 decimal
+places.
+If the calculation of either X or Y results in fewer than 10 digits then the value must be left-padded
+with ‘0’ to reach a total of 10 digits per value.
+For GS1 AIs encoding geocoordinates, X and Y are concatenated into a single string of twenty digits.
+For example, Machu Picchu Antarctica Base’s latitude (-62.0914152°) and longitude (-58.4702029°)
+would be converted to 0279085848 and 3015297971, resulting in a final data element of
+02790858483015297971
+7.14 Conversion of twenty-digit string to latitude and longitude
+A twenty digit geocode contains two ten-digit fields, X and Y, that can be converted to latitude and
+longitude values in the WGS84 coordinate reference system (expressed in decimal degrees) using
+the following calculations:
+■ X, the first 10 digits can be converted to WGS84 latitude using the following calculation:
+□ WGS84 latitude = ((X/10,000,000) – 90)°
+■ Y, the second group of 10 digits can be converted to WGS84 longitude using the following
+calculation:
+□ WGS84 longitude = ((((Y/10,000,000)+180) mod 360) – 180)°

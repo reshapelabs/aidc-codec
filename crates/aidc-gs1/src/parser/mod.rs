@@ -1,8 +1,4 @@
-#[cfg(any(
-    feature = "gs1-core",
-    feature = "gs1-dl",
-    feature = "gs1-composite"
-))]
+#[cfg(any(feature = "gs1-core", feature = "gs1-dl", feature = "gs1-composite"))]
 mod gs1;
 
 use aidc_core::AidcError;

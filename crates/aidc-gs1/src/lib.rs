@@ -8,6 +8,9 @@ pub mod parser;
 
 use aidc_core::{AidcError, EncodeInput, EncodedScan, ScanInput, TransportCodec};
 
+pub use conformance::{
+    parse_bracketed_ai, parse_dl_uri, process_scan_data, DlParseOptions, ScanDataOutcome,
+};
 pub use identify::identify_transport;
 pub use model::{
     AiElement, CarrierFamily, Gs1Ai, Gs1TransportMessage, KnownAi, ParseResult, ParsedPayload,
@@ -15,9 +18,6 @@ pub use model::{
 };
 pub use normalize::normalize_payload;
 pub use parser::parse_payload;
-pub use conformance::{
-    parse_bracketed_ai, parse_dl_uri, process_scan_data, DlParseOptions, ScanDataOutcome,
-};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Gs1Codec;

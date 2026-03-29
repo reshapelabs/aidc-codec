@@ -49,8 +49,9 @@ impl<'a> ScanInput<'a> {
                 "AIM scan must start with ']'".to_owned(),
             ));
         }
-        let symbology_identifier = std::str::from_utf8(&scan[..3])
-            .map_err(|_| AidcError::InvalidInput("invalid UTF-8 in symbology identifier".to_owned()))?;
+        let symbology_identifier = std::str::from_utf8(&scan[..3]).map_err(|_| {
+            AidcError::InvalidInput("invalid UTF-8 in symbology identifier".to_owned())
+        })?;
         Ok(Self {
             symbology_identifier,
             raw: &scan[3..],
@@ -78,10 +79,8 @@ pub trait TransportCodec {
     fn decode_transport(&self, input: ScanInput<'_>) -> Result<Self::TransportMsg, AidcError>;
     fn parse_payload(&self, message: Self::TransportMsg) -> Result<Self::Decoded, AidcError>;
 
-    fn format_payload(
-        &self,
-        request: Self::EncodeRequest,
-    ) -> Result<Self::TransportMsg, AidcError>;
+    fn format_payload(&self, request: Self::EncodeRequest)
+        -> Result<Self::TransportMsg, AidcError>;
     fn encode_transport(&self, message: Self::TransportMsg) -> Result<EncodedScan, AidcError>;
 
     fn decode(&self, input: ScanInput<'_>) -> Result<Self::Decoded, AidcError> {

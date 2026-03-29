@@ -3,7 +3,10 @@ use aidc_core::{AidcError, CanonicalPayload, DataElement};
 use crate::ai::{ai_requires_fnc1, validate_ai_value};
 use crate::model::TransportKind;
 
-pub fn encode_payload(kind: TransportKind, payload: CanonicalPayload) -> Result<Vec<u8>, AidcError> {
+pub fn encode_payload(
+    kind: TransportKind,
+    payload: CanonicalPayload,
+) -> Result<Vec<u8>, AidcError> {
     match (kind, payload) {
         (TransportKind::PlainDigits, CanonicalPayload::Digits(s)) => {
             if !s.as_bytes().iter().all(u8::is_ascii_digit) {

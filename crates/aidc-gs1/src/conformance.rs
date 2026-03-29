@@ -36,7 +36,9 @@ pub fn parse_bracketed_ai(input: &str) -> Result<String, AidcError> {
 
     while idx < bytes.len() {
         if bytes[idx] != b'(' {
-            return Err(AidcError::InvalidInput("expected AI opening bracket".to_owned()));
+            return Err(AidcError::InvalidInput(
+                "expected AI opening bracket".to_owned(),
+            ));
         }
         idx += 1;
 
@@ -48,7 +50,9 @@ pub fn parse_bracketed_ai(input: &str) -> Result<String, AidcError> {
             idx += 1;
         }
         if idx >= bytes.len() || bytes[idx] != b')' {
-            return Err(AidcError::InvalidInput("AI must terminate with ')'".to_owned()));
+            return Err(AidcError::InvalidInput(
+                "AI must terminate with ')'".to_owned(),
+            ));
         }
 
         let ai = &input[ai_start..idx];
@@ -83,7 +87,9 @@ pub fn parse_bracketed_ai(input: &str) -> Result<String, AidcError> {
         }
 
         if value.is_empty() {
-            return Err(AidcError::InvalidInput("AI value must not be empty".to_owned()));
+            return Err(AidcError::InvalidInput(
+                "AI value must not be empty".to_owned(),
+            ));
         }
         if value.len() > 90 {
             return Err(AidcError::InvalidInput("AI value too long".to_owned()));
@@ -92,7 +98,9 @@ pub fn parse_bracketed_ai(input: &str) -> Result<String, AidcError> {
         let fixed_len = fixed_value_length(ai);
         if let Some(n) = fixed_len {
             if value.len() != n {
-                return Err(AidcError::InvalidInput("fixed-length AI has invalid length".to_owned()));
+                return Err(AidcError::InvalidInput(
+                    "fixed-length AI has invalid length".to_owned(),
+                ));
             }
         }
 
@@ -115,19 +123,27 @@ pub fn parse_bracketed_ai(input: &str) -> Result<String, AidcError> {
 
 pub fn process_scan_data(scan_data: &str) -> Result<ScanDataOutcome, AidcError> {
     if scan_data.len() < 3 || !scan_data.starts_with(']') {
-        return Err(AidcError::InvalidInput("missing symbology identifier".to_owned()));
+        return Err(AidcError::InvalidInput(
+            "missing symbology identifier".to_owned(),
+        ));
     }
 
     let (id, payload) = scan_data.split_at(3);
     let sid = SymbologyId::parse(id);
 
     match sid {
-        SymbologyId::Q3 | SymbologyId::D2 | SymbologyId::J1 | SymbologyId::LowerE0 | SymbologyId::C1 => {
+        SymbologyId::Q3
+        | SymbologyId::D2
+        | SymbologyId::J1
+        | SymbologyId::LowerE0
+        | SymbologyId::C1 => {
             if payload.is_empty() {
                 return Err(AidcError::InvalidInput("empty GS1 scan payload".to_owned()));
             }
             if payload.contains('^') {
-                return Err(AidcError::InvalidInput("raw '^' is not valid in scan payload".to_owned()));
+                return Err(AidcError::InvalidInput(
+                    "raw '^' is not valid in scan payload".to_owned(),
+                ));
             }
             let mut data = String::from("^");
             for ch in payload.chars() {
@@ -172,7 +188,11 @@ pub fn process_scan_data(scan_data: &str) -> Result<ScanDataOutcome, AidcError> 
     }
 }
 
-fn process_ean(payload: &str, sym_name: &'static str, digits: usize) -> Result<ScanDataOutcome, AidcError> {
+fn process_ean(
+    payload: &str,
+    sym_name: &'static str,
+    digits: usize,
+) -> Result<ScanDataOutcome, AidcError> {
     let (primary, composite) = if let Some(pos) = payload.find("|]e0") {
         (&payload[..pos], Some(&payload[pos + 4..]))
     } else {
@@ -180,16 +200,22 @@ fn process_ean(payload: &str, sym_name: &'static str, digits: usize) -> Result<S
     };
 
     if primary.len() != digits || !primary.as_bytes().iter().all(u8::is_ascii_digit) {
-        return Err(AidcError::InvalidInput("invalid EAN primary data".to_owned()));
+        return Err(AidcError::InvalidInput(
+            "invalid EAN primary data".to_owned(),
+        ));
     }
     if !valid_mod10(primary) {
-        return Err(AidcError::InvalidInput("invalid EAN check digit".to_owned()));
+        return Err(AidcError::InvalidInput(
+            "invalid EAN check digit".to_owned(),
+        ));
     }
 
     let mut out = primary.to_owned();
     if let Some(cc) = composite {
         if cc.is_empty() {
-            return Err(AidcError::InvalidInput("empty composite payload".to_owned()));
+            return Err(AidcError::InvalidInput(
+                "empty composite payload".to_owned(),
+            ));
         }
         let mut cc_data = String::from("^");
         for ch in cc.chars() {
@@ -210,7 +236,11 @@ fn process_ean(payload: &str, sym_name: &'static str, digits: usize) -> Result<S
 }
 
 fn escape_leading_caret(payload: &str) -> String {
-    let slash_count = payload.as_bytes().iter().take_while(|&&b| b == b'\\').count();
+    let slash_count = payload
+        .as_bytes()
+        .iter()
+        .take_while(|&&b| b == b'\\')
+        .count();
     if payload.as_bytes().get(slash_count) == Some(&b'^') {
         let mut out = String::with_capacity(payload.len() + 1);
         out.push('\\');
@@ -234,10 +264,7 @@ fn valid_mod10(digits: &str) -> bool {
         return false;
     }
 
-    let vals: Vec<u32> = digits
-        .bytes()
-        .map(|b| u32::from(b - b'0'))
-        .collect();
+    let vals: Vec<u32> = digits.bytes().map(|b| u32::from(b - b'0')).collect();
     let mut sum = 0u32;
     let mut weight = if vals.len().is_multiple_of(2) { 3 } else { 1 };
     for n in &vals[..vals.len() - 1] {
@@ -253,7 +280,10 @@ pub fn parse_dl_uri(input: &str, options: DlParseOptions) -> Result<String, Aidc
         return Err(AidcError::InvalidInput("empty URI".to_owned()));
     }
 
-    if input.chars().any(|c| matches!(c, '<' | '>' | '{' | '}' | '\\' | '^' | '`')) {
+    if input
+        .chars()
+        .any(|c| matches!(c, '<' | '>' | '{' | '}' | '\\' | '^' | '`'))
+    {
         return Err(AidcError::InvalidInput("illegal URI character".to_owned()));
     }
 
@@ -277,14 +307,35 @@ pub fn parse_dl_uri(input: &str, options: DlParseOptions) -> Result<String, Aidc
     let authority = &before_query[..slash];
     let path = &before_query[slash..];
     if authority.is_empty() || path.is_empty() {
-        return Err(AidcError::InvalidInput("URI missing authority or path".to_owned()));
+        return Err(AidcError::InvalidInput(
+            "URI missing authority or path".to_owned(),
+        ));
     }
     let is_gs1_resolver = authority.eq_ignore_ascii_case("id.gs1.org");
-    if authority
-        .chars()
-        .any(|c| matches!(c, '_' | '~' | '?' | '#' | '@' | '!' | '$' | '&' | '\'' | '(' | ')' | '*' | '+' | ',' | ';' | '=' | '%'))
-    {
-        return Err(AidcError::InvalidInput("invalid character in authority".to_owned()));
+    if authority.chars().any(|c| {
+        matches!(
+            c,
+            '_' | '~'
+                | '?'
+                | '#'
+                | '@'
+                | '!'
+                | '$'
+                | '&'
+                | '\''
+                | '('
+                | ')'
+                | '*'
+                | '+'
+                | ','
+                | ';'
+                | '='
+                | '%'
+        )
+    }) {
+        return Err(AidcError::InvalidInput(
+            "invalid character in authority".to_owned(),
+        ));
     }
 
     let raw_segments: Vec<&str> = path.split('/').skip(1).collect();
@@ -310,7 +361,9 @@ pub fn parse_dl_uri(input: &str, options: DlParseOptions) -> Result<String, Aidc
         let mut ai = normalize_ai(key_raw, options)?;
         let mut value = path_segments[i + 1].clone();
         if value.is_empty() {
-            return Err(AidcError::InvalidInput("path AI value must not be empty".to_owned()));
+            return Err(AidcError::InvalidInput(
+                "path AI value must not be empty".to_owned(),
+            ));
         }
         if ai == "01"
             && start > 0
@@ -326,12 +379,16 @@ pub fn parse_dl_uri(input: &str, options: DlParseOptions) -> Result<String, Aidc
         }
         if elements.is_empty() {
             if !is_primary_ai(&ai) {
-                return Err(AidcError::InvalidInput("path must begin with primary key AI".to_owned()));
+                return Err(AidcError::InvalidInput(
+                    "path must begin with primary key AI".to_owned(),
+                ));
             }
         } else {
             let p = &elements[0].0;
             if !is_valid_path_qualifier(p, &ai) {
-                return Err(AidcError::InvalidInput("invalid path qualifier for primary AI".to_owned()));
+                return Err(AidcError::InvalidInput(
+                    "invalid path qualifier for primary AI".to_owned(),
+                ));
             }
         }
         elements.push((ai, value));
@@ -351,27 +408,35 @@ pub fn parse_dl_uri(input: &str, options: DlParseOptions) -> Result<String, Aidc
             continue;
         }
         if val.is_empty() {
-            return Err(AidcError::InvalidInput("query AI value must not be empty".to_owned()));
+            return Err(AidcError::InvalidInput(
+                "query AI value must not be empty".to_owned(),
+            ));
         }
 
         if !is_known_ai(&key) {
             if !options.permit_unknown_ais || options.validate_unknown_ai_not_dl_attr {
-                return Err(AidcError::InvalidInput("unknown numeric query AI is not permitted".to_owned()));
+                return Err(AidcError::InvalidInput(
+                    "unknown numeric query AI is not permitted".to_owned(),
+                ));
             }
         } else if options.validate_unknown_ai_not_dl_attr && !is_dl_attribute_ai(&key) {
-            return Err(AidcError::InvalidInput("numeric query AI is not a DL attribute".to_owned()));
+            return Err(AidcError::InvalidInput(
+                "numeric query AI is not a DL attribute".to_owned(),
+            ));
         }
         if !used_ais.insert(key.clone()) {
-            return Err(AidcError::InvalidInput("repeated AI in query/path".to_owned()));
+            return Err(AidcError::InvalidInput(
+                "repeated AI in query/path".to_owned(),
+            ));
         }
 
         let mut ai = key;
         if !is_gs1_resolver && ai == "10" {
-            return Err(AidcError::InvalidInput("AI not allowed in query for this resolver".to_owned()));
+            return Err(AidcError::InvalidInput(
+                "AI not allowed in query for this resolver".to_owned(),
+            ));
         }
-        if ai == "01"
-            && val.chars().all(|c| c.is_ascii_digit())
-            && matches!(val.len(), 13 | 12 | 8)
+        if ai == "01" && val.chars().all(|c| c.is_ascii_digit()) && matches!(val.len(), 13 | 12 | 8)
         {
             val = format!("{:0>14}", val);
         }
@@ -380,7 +445,9 @@ pub fn parse_dl_uri(input: &str, options: DlParseOptions) -> Result<String, Aidc
     }
 
     if elements.is_empty() || !is_primary_ai(&elements[0].0) {
-        return Err(AidcError::InvalidInput("no primary key AI in URI path".to_owned()));
+        return Err(AidcError::InvalidInput(
+            "no primary key AI in URI path".to_owned(),
+        ));
     }
 
     Ok(to_internal_ai_string(&elements))
@@ -417,7 +484,9 @@ fn uri_unescape(s: &str, query: bool) -> Result<String, AidcError> {
 
 fn find_primary_start(segments: &[String], options: DlParseOptions) -> Result<usize, AidcError> {
     if segments.len() < 2 {
-        return Err(AidcError::InvalidInput("path does not contain AI/value pair".to_owned()));
+        return Err(AidcError::InvalidInput(
+            "path does not contain AI/value pair".to_owned(),
+        ));
     }
     for i in (0..segments.len().saturating_sub(1)).rev() {
         if !(segments.len() - i).is_multiple_of(2) {
@@ -431,7 +500,9 @@ fn find_primary_start(segments: &[String], options: DlParseOptions) -> Result<us
             return Ok(i);
         }
     }
-    Err(AidcError::InvalidInput("no primary key AI in path".to_owned()))
+    Err(AidcError::InvalidInput(
+        "no primary key AI in path".to_owned(),
+    ))
 }
 
 fn normalize_ai(key: &str, options: DlParseOptions) -> Result<String, AidcError> {
@@ -461,7 +532,11 @@ fn is_valid_path_qualifier(primary_ai: &str, ai: &str) -> bool {
     }
 }
 
-fn validate_ai_value(ai: &mut String, value: &mut String, options: DlParseOptions) -> Result<(), AidcError> {
+fn validate_ai_value(
+    ai: &mut String,
+    value: &mut String,
+    options: DlParseOptions,
+) -> Result<(), AidcError> {
     if *ai == "01"
         && options.permit_zero_suppressed_gtin
         && value.chars().all(|c| c.is_ascii_digit())

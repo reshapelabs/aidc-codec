@@ -12,7 +12,10 @@ pub fn normalize_payload(transport: &Transport, raw: &[u8]) -> Result<Vec<u8>, A
 }
 
 fn normalize_element_string(transport: &Transport, raw: &[u8]) -> Result<Vec<u8>, AidcError> {
-    if matches!(transport.symbology_id, SymbologyId::Q3) && !raw.contains(&0x1d) && raw.contains(&b'%') {
+    if matches!(transport.symbology_id, SymbologyId::Q3)
+        && !raw.contains(&0x1d)
+        && raw.contains(&b'%')
+    {
         return Ok(raw
             .iter()
             .map(|b| if *b == b'%' { 0x1d } else { *b })

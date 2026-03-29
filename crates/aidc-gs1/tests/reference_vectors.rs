@@ -36,12 +36,15 @@ fn fixtures_dir() -> PathBuf {
 
 fn read_jsonl<T: for<'de> Deserialize<'de>>(name: &str) -> Vec<T> {
     let path = fixtures_dir().join(name);
-    let content =
-        fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
+    let content = fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
     content
         .lines()
         .filter(|l| !l.trim().is_empty())
-        .map(|line| serde_json::from_str::<T>(line).unwrap_or_else(|e| panic!("bad jsonl line {line:?}: {e}")))
+        .map(|line| {
+            serde_json::from_str::<T>(line)
+                .unwrap_or_else(|e| panic!("bad jsonl line {line:?}: {e}"))
+        })
         .collect()
 }
 
@@ -60,12 +63,14 @@ fn load_dl_parse_cases() -> Vec<DlParseCase> {
 #[test]
 fn fixtures_sanity_parse_ai() {
     let cases = load_parse_ai_cases();
-    assert!(cases.len() > 20, "too few parseAIdata cases: {}", cases.len());
+    assert!(
+        cases.len() > 20,
+        "too few parseAIdata cases: {}",
+        cases.len()
+    );
 
     let has_known = cases.iter().any(|c| {
-        c.should_succeed
-            && c.input == "(01)12345678901231"
-            && c.expected == "^0112345678901231"
+        c.should_succeed && c.input == "(01)12345678901231" && c.expected == "^0112345678901231"
     });
     assert!(has_known, "missing known parseAIdata fixture");
 }
@@ -73,7 +78,11 @@ fn fixtures_sanity_parse_ai() {
 #[test]
 fn fixtures_sanity_scandata_process() {
     let cases = load_scandata_process_cases();
-    assert!(cases.len() > 40, "too few scandata_process cases: {}", cases.len());
+    assert!(
+        cases.len() > 40,
+        "too few scandata_process cases: {}",
+        cases.len()
+    );
 
     let has_d2 = cases.iter().any(|c| {
         c.should_succeed
@@ -106,7 +115,10 @@ fn conformance_parse_ai_vectors() {
         let got = parse_bracketed_ai(&case.input);
         if case.should_succeed {
             let out = got.unwrap_or_else(|e| {
-                panic!("expected success for input {:?}, got error: {e}", case.input)
+                panic!(
+                    "expected success for input {:?}, got error: {e}",
+                    case.input
+                )
             });
             assert_eq!(
                 out, case.expected,
@@ -172,7 +184,10 @@ fn conformance_dl_parse_vectors() {
         let got = parse_dl_uri(&case.input, opts);
         if case.should_succeed {
             let out = got.unwrap_or_else(|e| {
-                panic!("expected DL success for input {:?}, got error: {e}", case.input)
+                panic!(
+                    "expected DL success for input {:?}, got error: {e}",
+                    case.input
+                )
             });
             assert_eq!(
                 out, case.expected,

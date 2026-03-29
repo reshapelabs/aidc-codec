@@ -6,15 +6,13 @@ pub fn identify_transport(symbology_identifier: &str) -> Result<Transport, AidcE
     let symbology_id = SymbologyId::parse(symbology_identifier);
 
     let transport = match symbology_id {
-        SymbologyId::E0
-        | SymbologyId::E1
-        | SymbologyId::E2
-        | SymbologyId::E3
-        | SymbologyId::E4 => Transport {
-            symbology_id,
-            carrier: CarrierFamily::EanUpc,
-            kind: TransportKind::PlainDigits,
-        },
+        SymbologyId::E0 | SymbologyId::E1 | SymbologyId::E2 | SymbologyId::E3 | SymbologyId::E4 => {
+            Transport {
+                symbology_id,
+                carrier: CarrierFamily::EanUpc,
+                kind: TransportKind::PlainDigits,
+            }
+        }
         SymbologyId::I1 => Transport {
             symbology_id,
             carrier: CarrierFamily::Itf,

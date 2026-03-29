@@ -6,3 +6,4 @@
 # everyone who runs the test benefits from these saved cases.
 cc fba98d4478063203b2cfef872baf3139019a64b2c8f2d51ce28606c36db17972 # shrinks to segments = [("21", "A")]
 cc d9fa53c6781ab3672a935d79548e7eb5071fabbfef0c1b9389a7a05a394d1b23 # shrinks to segments = [("21", "A"), ("00", "000000000000000000")], insert_at = 0
+cc 968b850fd5074422c3d29a7e96ae259ce7dca807fad866b6eb7a0d1096defb97 # shrinks to segments = [("00", "303000300023000030"), ("00", "000000000000000000")], insert_at = 0
