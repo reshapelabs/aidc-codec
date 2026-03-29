@@ -16,7 +16,8 @@ if [ ! -f "$AIDC_GS1_REF_LIB" ]; then
 fi
 
 export AIDC_GS1_REF_LIB
-cargo nextest run -p aidc-gs1 differential_scandata_matches_reference
+export AIDC_GS1_DIFF_STRICT_SEMANTIC="${AIDC_GS1_DIFF_STRICT_SEMANTIC:-1}"
+cargo nextest run -p aidc-gs1 --all-features differential_scandata_matches_reference
 '''
 
 [tasks.gs1-diff-fuzz]
@@ -35,5 +36,6 @@ fi
 export AIDC_GS1_REF_LIB
 export AIDC_GS1_DIFF_PROPTEST=1
 export AIDC_GS1_DIFF_PROPTEST_CASES="${AIDC_GS1_DIFF_PROPTEST_CASES:-512}"
-cargo nextest run -p aidc-gs1 differential_scandata_fuzz_matches_reference
+export AIDC_GS1_DIFF_STRICT_SEMANTIC="${AIDC_GS1_DIFF_STRICT_SEMANTIC:-1}"
+cargo nextest run -p aidc-gs1 --all-features differential_scandata_fuzz_matches_reference
 '''

@@ -2,7 +2,9 @@ use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
 
+use aidc_core::{ScanInput, TransportCodec};
 use aidc_gs1::process_scan_data;
+use aidc_gs1::Gs1Codec;
 use libloading::{Library, Symbol};
 use proptest::prelude::*;
 use proptest::strategy::Strategy;
@@ -19,6 +21,8 @@ struct RefOutcome {
     ok: bool,
     sym_name: String,
     data_str: String,
+    ai_data_bracketed: Option<String>,
+    hri_compact: Option<String>,
 }
 
 struct RefApi {
@@ -28,6 +32,8 @@ struct RefApi {
     set_scan_data: unsafe extern "C" fn(*mut c_void, *const c_char) -> bool,
     get_data_str: unsafe extern "C" fn(*mut c_void) -> *const c_char,
     get_sym: unsafe extern "C" fn(*mut c_void) -> c_int,
+    get_ai_data_str: unsafe extern "C" fn(*mut c_void) -> *const c_char,
+    get_hri: unsafe extern "C" fn(*mut c_void, *mut *const *const c_char) -> c_int,
 }
 
 impl RefApi {
@@ -51,6 +57,18 @@ impl RefApi {
         };
         let get_sym =
             unsafe { load_sym::<unsafe extern "C" fn(*mut c_void) -> c_int>(&lib, b"gs1_encoder_getSym\0")? };
+        let get_ai_data_str = unsafe {
+            load_sym::<unsafe extern "C" fn(*mut c_void) -> *const c_char>(
+                &lib,
+                b"gs1_encoder_getAIdataStr\0",
+            )?
+        };
+        let get_hri = unsafe {
+            load_sym::<unsafe extern "C" fn(*mut c_void, *mut *const *const c_char) -> c_int>(
+                &lib,
+                b"gs1_encoder_getHRI\0",
+            )?
+        };
         Ok(Self {
             _lib: lib,
             init,
@@ -58,6 +76,8 @@ impl RefApi {
             set_scan_data,
             get_data_str,
             get_sym,
+            get_ai_data_str,
+            get_hri,
         })
     }
 }
@@ -120,6 +140,18 @@ fn run_ref(api: &RefApi, scan_data: &str) -> Result<RefOutcome, String> {
     let ok = unsafe { (api.set_scan_data)(ctx, c_scan.as_ptr()) };
     let data_ptr = unsafe { (api.get_data_str)(ctx) };
     let sym = unsafe { (api.get_sym)(ctx) };
+    let ai_ptr = unsafe { (api.get_ai_data_str)(ctx) };
+    let ai_data_bracketed = if ai_ptr.is_null() {
+        None
+    } else {
+        Some(
+            unsafe { CStr::from_ptr(ai_ptr) }
+                .to_string_lossy()
+                .into_owned(),
+        )
+    };
+    let mut hri_ptr: *const *const c_char = std::ptr::null();
+    let hri_count = unsafe { (api.get_hri)(ctx, &mut hri_ptr as *mut *const *const c_char) };
 
     let data_str = if data_ptr.is_null() {
         String::new()
@@ -128,12 +160,30 @@ fn run_ref(api: &RefApi, scan_data: &str) -> Result<RefOutcome, String> {
             .to_string_lossy()
             .into_owned()
     };
+    let hri_compact = if hri_count <= 0 || hri_ptr.is_null() {
+        None
+    } else {
+        let mut parts = Vec::with_capacity(hri_count as usize);
+        for idx in 0..(hri_count as usize) {
+            let item_ptr = unsafe { *hri_ptr.add(idx) };
+            if item_ptr.is_null() {
+                continue;
+            }
+            let item = unsafe { CStr::from_ptr(item_ptr) }
+                .to_string_lossy()
+                .into_owned();
+            parts.push(item.replace(") ", ")"));
+        }
+        Some(parts.join(""))
+    };
     unsafe { (api.free)(ctx) };
 
     Ok(RefOutcome {
         ok,
         sym_name: sym_name(sym).to_owned(),
         data_str,
+        ai_data_bracketed,
+        hri_compact,
     })
 }
 
@@ -210,6 +260,61 @@ fn assert_parity(api: &RefApi, scan_data: &str) {
     }
 }
 
+fn rust_semantics(scan_data: &str) -> Result<Option<(String, String)>, String> {
+    let scan = scan_data.as_bytes();
+    let input = ScanInput::from_aim_scan(scan)
+        .map_err(|e| format!("failed to parse AIM scan {:?}: {e}", scan_data))?;
+    let decoded = Gs1Codec.decode(input).map_err(|e| e.to_string())?;
+    let Some(elements) = decoded.parsed.ai_elements() else {
+        return Ok(None);
+    };
+    let mut bracketed = String::new();
+    for el in elements {
+        bracketed.push('(');
+        bracketed.push_str(el.ai.code());
+        bracketed.push(')');
+        bracketed.push_str(&el.value);
+    }
+    let hri = decoded.to_hri().unwrap_or_default();
+    Ok(Some((bracketed, hri)))
+}
+
+fn assert_semantic_parity(api: &RefApi, scan_data: &str) {
+    if !scan_data.starts_with("]d2")
+        && !scan_data.starts_with("]Q3")
+        && !scan_data.starts_with("]C1")
+        && !scan_data.starts_with("]e0")
+        && !scan_data.starts_with("]J1")
+        && !scan_data.starts_with("]d1")
+        && !scan_data.starts_with("]Q1")
+    {
+        return;
+    }
+    let reference = run_ref(api, scan_data)
+        .unwrap_or_else(|e| panic!("reference call failed for {:?}: {e}", scan_data));
+    let Some(reference_ai) = reference.ai_data_bracketed else {
+        return;
+    };
+    let (rust_ai, rust_hri) = match rust_semantics(scan_data) {
+        Ok(Some(v)) => v,
+        Ok(None) => panic!("rust semantic decode returned no AI elements for {:?}", scan_data),
+        Err(e) => panic!("rust semantic decode failed for {:?}: {e}", scan_data),
+    };
+
+    assert_eq!(
+        rust_ai, reference_ai,
+        "AI bracketed parity mismatch for scan_data {:?}",
+        scan_data
+    );
+    if let Some(reference_hri) = reference.hri_compact {
+        assert_eq!(
+            rust_hri, reference_hri,
+            "HRI parity mismatch for scan_data {:?}",
+            scan_data
+        );
+    }
+}
+
 fn mod10_check_digit(base: &str) -> u32 {
     let mut sum = 0u32;
     for (idx, ch) in base.chars().rev().enumerate() {
@@ -253,6 +358,7 @@ fn fnc1_encoded_payload() -> impl Strategy<Value = String> {
 
 #[test]
 fn differential_scandata_matches_reference() {
+    let strict_semantic = std::env::var("AIDC_GS1_DIFF_STRICT_SEMANTIC").as_deref() == Ok("1");
     with_ref_api(|api| {
         let cases = read_scandata_cases();
         assert!(
@@ -262,6 +368,9 @@ fn differential_scandata_matches_reference() {
 
         for case in cases {
             assert_parity(api, &case.scan_data);
+            if strict_semantic {
+                assert_semantic_parity(api, &case.scan_data);
+            }
         }
     });
 }
@@ -279,6 +388,7 @@ fn differential_scandata_fuzz_matches_reference() {
         .unwrap_or(256);
 
     with_ref_api(|api| {
+        let strict_semantic = std::env::var("AIDC_GS1_DIFF_STRICT_SEMANTIC").as_deref() == Ok("1");
         let mut runner = TestRunner::new(ProptestConfig {
             cases,
             ..ProptestConfig::default()
@@ -287,6 +397,9 @@ fn differential_scandata_fuzz_matches_reference() {
         runner
             .run(&strategy, |scan_data| {
                 assert_parity(api, &scan_data);
+                if strict_semantic {
+                    assert_semantic_parity(api, &scan_data);
+                }
                 Ok(())
             })
             .unwrap_or_else(|e| panic!("differential proptest failed: {e}"));
