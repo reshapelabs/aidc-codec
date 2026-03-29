@@ -1,4 +1,4 @@
-use aidc_core::{CanonicalPayload, DataElement, EncodeInput, ScanInput, TransportCodec};
+use aidc_core::{AidcError, CanonicalPayload, DataElement, EncodeInput, ScanInput, TransportCodec};
 use aidc_gs1::{Gs1Codec, ParseResult, ParsedPayload, SymbologyId, TransportKind};
 use proptest::prelude::*;
 
@@ -79,7 +79,10 @@ fn encode_then_decode_preserves_gs1_semantics() {
 fn decode_encode_decode_is_semantically_stable_for_known_scan() {
     let codec = Gs1Codec;
     let first = codec
-        .decode(ScanInput::new("]d2", b"010952012345678810ABC123\x1d17251231"))
+        .decode(ScanInput::new(
+            "]d2",
+            b"010952012345678810ABC123\x1d17251231",
+        ))
         .expect("initial decode");
     let req = to_encode_input_from_decoded(&first).expect("encodable decoded payload");
     let encoded = codec.encode(req).expect("encode");
@@ -90,20 +93,54 @@ fn decode_encode_decode_is_semantically_stable_for_known_scan() {
     assert_eq!(first.transport.kind, second.transport.kind);
     assert_eq!(first.transport.symbology_id, second.transport.symbology_id);
     assert_eq!(first.to_hri(), second.to_hri());
-    assert_eq!(elements_semantic(&first.parsed), elements_semantic(&second.parsed));
+    assert_eq!(
+        elements_semantic(&first.parsed),
+        elements_semantic(&second.parsed)
+    );
+}
+
+#[test]
+fn encode_invalid_payload_returns_invalid_payload_error() {
+    let codec = Gs1Codec;
+    let err = codec
+        .encode(EncodeInput {
+            symbology_identifier: "]d2".to_owned(),
+            payload: CanonicalPayload::Elements(vec![DataElement {
+                id: "01".to_owned(),
+                value: "ABC".to_owned(),
+            }]),
+        })
+        .expect_err("encode should fail");
+    assert!(matches!(err, AidcError::InvalidPayload(_)));
+}
+
+#[test]
+fn decode_malformed_payload_returns_invalid_payload_error() {
+    let codec = Gs1Codec;
+    let err = codec
+        .decode(ScanInput::new("]d2", b"0409520123456788"))
+        .expect_err("decode should fail");
+    assert!(matches!(err, AidcError::InvalidPayload(_)));
 }
 
 fn fixed_ai_strategy() -> impl Strategy<Value = DataElement> {
     prop_oneof![
-        proptest::string::string_regex("[0-9]{18}")
+        proptest::string::string_regex("[0-9]{17}")
             .expect("valid regex")
-            .prop_map(|v| DataElement { id: "00".to_owned(), value: v }),
-        proptest::string::string_regex("[0-9]{14}")
+            .prop_map(|v| DataElement {
+                id: "00".to_owned(),
+                value: with_mod10_check_digit(&v)
+            }),
+        proptest::string::string_regex("[0-9]{13}")
             .expect("valid regex")
-            .prop_map(|v| DataElement { id: "01".to_owned(), value: v }),
-        proptest::string::string_regex("[0-9]{6}")
-            .expect("valid regex")
-            .prop_map(|v| DataElement { id: "17".to_owned(), value: v }),
+            .prop_map(|v| DataElement {
+                id: "01".to_owned(),
+                value: with_mod10_check_digit(&v)
+            }),
+        (0u8..100, 1u8..13, prop_oneof![Just(0u8), 1u8..29]).prop_map(|(yy, mm, dd)| DataElement {
+            id: "17".to_owned(),
+            value: format!("{yy:02}{mm:02}{dd:02}")
+        }),
     ]
 }
 
@@ -111,18 +148,37 @@ fn variable_ai_strategy() -> impl Strategy<Value = DataElement> {
     prop_oneof![
         proptest::string::string_regex("[A-Z0-9]{1,20}")
             .expect("valid regex")
-            .prop_map(|v| DataElement { id: "10".to_owned(), value: v }),
+            .prop_map(|v| DataElement {
+                id: "10".to_owned(),
+                value: v
+            }),
         proptest::string::string_regex("[A-Z0-9]{1,20}")
             .expect("valid regex")
-            .prop_map(|v| DataElement { id: "21".to_owned(), value: v }),
+            .prop_map(|v| DataElement {
+                id: "21".to_owned(),
+                value: v
+            }),
         proptest::string::string_regex("[A-Z0-9]{1,28}")
             .expect("valid regex")
-            .prop_map(|v| DataElement { id: "235".to_owned(), value: v }),
+            .prop_map(|v| DataElement {
+                id: "235".to_owned(),
+                value: v
+            }),
     ]
 }
 
 fn element_strategy() -> impl Strategy<Value = DataElement> {
     prop_oneof![fixed_ai_strategy(), variable_ai_strategy()]
+}
+
+fn with_mod10_check_digit(base: &str) -> String {
+    let mut sum = 0u32;
+    for (idx, ch) in base.chars().rev().enumerate() {
+        let d = u32::from((ch as u8) - b'0');
+        sum += if idx % 2 == 0 { 3 * d } else { d };
+    }
+    let check = (10 - (sum % 10)) % 10;
+    format!("{base}{check}")
 }
 
 proptest! {

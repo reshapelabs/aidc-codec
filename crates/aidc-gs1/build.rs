@@ -27,6 +27,22 @@ struct Component {
     min: u8,
     max: u8,
     optional: bool,
+    mod10_check: bool,
+    date_rule: DateRule,
+    time_rule: TimeRule,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum DateRule {
+    None,
+    YymmddStrict,
+    YymmddAllowZeroDay,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum TimeRule {
+    None,
+    Hhmi,
 }
 
 fn main() {
@@ -126,8 +142,20 @@ fn main() {
                     Charset::Z => "AiCharset::Z",
                 };
                 format!(
-                    "AiComponent {{ charset: {charset}, min: {}, max: {}, optional: {} }}",
-                    c.min, c.max, c.optional
+                    "AiComponent {{ charset: {charset}, min: {}, max: {}, optional: {}, mod10_check: {}, date_rule: {}, time_rule: {} }}",
+                    c.min,
+                    c.max,
+                    c.optional,
+                    c.mod10_check,
+                    match c.date_rule {
+                        DateRule::None => "AiDateRule::None",
+                        DateRule::YymmddStrict => "AiDateRule::YymmddStrict",
+                        DateRule::YymmddAllowZeroDay => "AiDateRule::YymmddAllowZeroDay",
+                    },
+                    match c.time_rule {
+                        TimeRule::None => "AiTimeRule::None",
+                        TimeRule::Hhmi => "AiTimeRule::Hhmi",
+                    }
                 )
             })
             .collect::<Vec<_>>()
@@ -147,8 +175,10 @@ fn parse_components(spec: &str) -> Vec<Component> {
     let mut out = Vec::new();
     for token in spec.split_whitespace() {
         let mut head = token;
-        if let Some((prefix, _)) = head.split_once(',') {
+        let mut modifiers = "";
+        if let Some((prefix, tail)) = head.split_once(',') {
             head = prefix;
+            modifiers = tail;
         }
         if head.is_empty() {
             continue;
@@ -179,11 +209,27 @@ fn parse_components(spec: &str) -> Vec<Component> {
         if min == 0 || max == 0 || min > max {
             return Vec::new();
         }
+        let mod10_check = modifiers.split(',').any(|m| m == "csum");
+        let date_rule = if modifiers.split(',').any(|m| m == "yymmdd") {
+            DateRule::YymmddStrict
+        } else if modifiers.split(',').any(|m| m == "yymmd0") {
+            DateRule::YymmddAllowZeroDay
+        } else {
+            DateRule::None
+        };
+        let time_rule = if modifiers.split(',').any(|m| m == "hhmi") {
+            TimeRule::Hhmi
+        } else {
+            TimeRule::None
+        };
         out.push(Component {
             charset,
             min,
             max,
             optional,
+            mod10_check,
+            date_rule,
+            time_rule,
         });
     }
     out

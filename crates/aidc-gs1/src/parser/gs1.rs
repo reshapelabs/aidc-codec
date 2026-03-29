@@ -5,7 +5,10 @@ use crate::ai::{ai_requires_fnc1, fixed_value_length, is_known_ai, validate_ai_v
 use crate::conformance::{parse_dl_uri, DlParseOptions};
 use crate::model::{AiElement, Gs1Ai, ParseResult, ParsedPayload, Transport};
 
-pub fn parse_element_string(transport: Transport, normalized: Vec<u8>) -> Result<ParseResult, AidcError> {
+pub fn parse_element_string(
+    transport: Transport,
+    normalized: Vec<u8>,
+) -> Result<ParseResult, AidcError> {
     let elements = parse_ai_elements(&normalized)?;
 
     Ok(ParseResult {
@@ -18,9 +21,13 @@ pub fn parse_element_string(transport: Transport, normalized: Vec<u8>) -> Result
 }
 
 #[cfg(feature = "gs1-dl")]
-pub fn parse_digital_link(transport: Transport, normalized: Vec<u8>) -> Result<ParseResult, AidcError> {
-    let uri = String::from_utf8(normalized)
-        .map_err(|_| AidcError::InvalidPayload("GS1 Digital Link must be valid UTF-8".to_owned()))?;
+pub fn parse_digital_link(
+    transport: Transport,
+    normalized: Vec<u8>,
+) -> Result<ParseResult, AidcError> {
+    let uri = String::from_utf8(normalized).map_err(|_| {
+        AidcError::InvalidPayload("GS1 Digital Link must be valid UTF-8".to_owned())
+    })?;
     let internal = parse_dl_uri(
         &uri,
         DlParseOptions {
@@ -34,10 +41,7 @@ pub fn parse_digital_link(transport: Transport, normalized: Vec<u8>) -> Result<P
 
     Ok(ParseResult {
         transport,
-        parsed: ParsedPayload::Gs1DigitalLink {
-            uri,
-            elements,
-        },
+        parsed: ParsedPayload::Gs1DigitalLink { uri, elements },
     })
 }
 
@@ -53,10 +57,13 @@ pub fn parse_composite_packet(
 }
 
 fn parse_ai_elements(input: &[u8]) -> Result<Vec<AiElement>, AidcError> {
-    let text = std::str::from_utf8(input)
-        .map_err(|_| AidcError::InvalidPayload("GS1 element string must be valid UTF-8".to_owned()))?;
+    let text = std::str::from_utf8(input).map_err(|_| {
+        AidcError::InvalidPayload("GS1 element string must be valid UTF-8".to_owned())
+    })?;
     if text.is_empty() {
-        return Err(AidcError::InvalidPayload("empty GS1 element string".to_owned()));
+        return Err(AidcError::InvalidPayload(
+            "empty GS1 element string".to_owned(),
+        ));
     }
 
     let mut out = Vec::new();
@@ -66,7 +73,9 @@ fn parse_ai_elements(input: &[u8]) -> Result<Vec<AiElement>, AidcError> {
             if idx + 1 == fields.len() && idx > 0 {
                 continue;
             }
-            return Err(AidcError::InvalidPayload("empty FNC1-delimited field".to_owned()));
+            return Err(AidcError::InvalidPayload(
+                "empty FNC1-delimited field".to_owned(),
+            ));
         }
         parse_field(field, &mut out)?;
     }
@@ -82,7 +91,9 @@ fn parse_field(mut field: &str, out: &mut Vec<AiElement>) -> Result<(), AidcErro
 
         if let Some(n) = fixed_value_length(&ai) {
             if body.len() < n {
-                return Err(AidcError::InvalidPayload("truncated fixed-length AI value".to_owned()));
+                return Err(AidcError::InvalidPayload(
+                    "truncated fixed-length AI value".to_owned(),
+                ));
             }
             let value = &body[..n];
             validate_ai_value(&ai, value)?;
@@ -100,7 +111,9 @@ fn parse_field(mut field: &str, out: &mut Vec<AiElement>) -> Result<(), AidcErro
         }
 
         if body.is_empty() {
-            return Err(AidcError::InvalidPayload("empty variable-length AI value".to_owned()));
+            return Err(AidcError::InvalidPayload(
+                "empty variable-length AI value".to_owned(),
+            ));
         }
         validate_ai_value(&ai, body)?;
         out.push(AiElement {
@@ -122,7 +135,9 @@ fn parse_internal_ai_string(input: &str) -> Result<Vec<AiElement>, AidcError> {
     let mut out = Vec::new();
     for field in input[1..].split('^') {
         if field.is_empty() {
-            return Err(AidcError::InvalidPayload("empty internal AI segment".to_owned()));
+            return Err(AidcError::InvalidPayload(
+                "empty internal AI segment".to_owned(),
+            ));
         }
         parse_field(field, &mut out)?;
     }
@@ -149,8 +164,8 @@ fn parse_ai(field: &str) -> Option<String> {
 mod tests {
     use proptest::prelude::*;
 
-    use crate::ai::{is_known_ai, AI_DICTIONARY};
     use super::parse_ai_elements;
+    use crate::ai::{is_known_ai, AI_DICTIONARY};
     use crate::model::{CarrierFamily, ParsedPayload, SymbologyId, Transport, TransportKind};
 
     #[test]
@@ -218,7 +233,10 @@ mod tests {
         };
         let parsed = super::parse_element_string(transport, b"010952012345678810ABC123".to_vec())
             .expect("parse should succeed");
-        assert_eq!(parsed.to_hri().as_deref(), Some("(01)09520123456788(10)ABC123"));
+        assert_eq!(
+            parsed.to_hri().as_deref(),
+            Some("(01)09520123456788(10)ABC123")
+        );
     }
 
     #[test]
@@ -254,18 +272,17 @@ mod tests {
 
     fn fixed_ai_strategy() -> impl Strategy<Value = (String, String)> {
         prop_oneof![
-            proptest::string::string_regex("[0-9]{18}")
+            proptest::string::string_regex("[0-9]{17}")
                 .expect("valid regex")
-                .prop_map(|v| ("00".to_owned(), v)),
-            proptest::string::string_regex("[0-9]{14}")
-                .expect("valid regex")
-                .prop_map(|v| ("01".to_owned(), v)),
-            proptest::string::string_regex("[0-9]{6}")
-                .expect("valid regex")
-                .prop_map(|v| ("17".to_owned(), v)),
+                .prop_map(|v| ("00".to_owned(), with_mod10_check_digit(&v))),
             proptest::string::string_regex("[0-9]{13}")
                 .expect("valid regex")
-                .prop_map(|v| ("414".to_owned(), v)),
+                .prop_map(|v| ("01".to_owned(), with_mod10_check_digit(&v))),
+            (0u8..100, 1u8..13, prop_oneof![Just(0u8), 1u8..29])
+                .prop_map(|(yy, mm, dd)| ("17".to_owned(), format!("{yy:02}{mm:02}{dd:02}"))),
+            proptest::string::string_regex("[0-9]{12}")
+                .expect("valid regex")
+                .prop_map(|v| ("414".to_owned(), with_mod10_check_digit(&v))),
         ]
     }
 
@@ -285,6 +302,16 @@ mod tests {
 
     fn ai_segment_strategy() -> impl Strategy<Value = (String, String)> {
         prop_oneof![fixed_ai_strategy(), variable_ai_strategy()]
+    }
+
+    fn with_mod10_check_digit(base: &str) -> String {
+        let mut sum = 0u32;
+        for (idx, ch) in base.chars().rev().enumerate() {
+            let d = u32::from((ch as u8) - b'0');
+            sum += if idx % 2 == 0 { 3 * d } else { d };
+        }
+        let check = (10 - (sum % 10)) % 10;
+        format!("{base}{check}")
     }
 
     proptest! {

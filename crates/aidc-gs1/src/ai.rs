@@ -9,11 +9,27 @@ pub enum AiCharset {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AiDateRule {
+    None,
+    YymmddStrict,
+    YymmddAllowZeroDay,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AiTimeRule {
+    None,
+    Hhmi,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AiComponent {
     pub charset: AiCharset,
     pub min: u8,
     pub max: u8,
     pub optional: bool,
+    pub mod10_check: bool,
+    pub date_rule: AiDateRule,
+    pub time_rule: AiTimeRule,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -55,7 +71,9 @@ pub(crate) fn ai_requires_fnc1(ai: &str) -> bool {
 
 pub(crate) fn validate_ai_value(ai: &str, value: &str) -> Result<(), AidcError> {
     if value.is_empty() {
-        return Err(AidcError::InvalidPayload("AI value must not be empty".to_owned()));
+        return Err(AidcError::InvalidPayload(
+            "AI value must not be empty".to_owned(),
+        ));
     }
     if value.len() > 90 {
         return Err(AidcError::InvalidPayload("AI value too long".to_owned()));
@@ -103,6 +121,7 @@ fn validate_components(components: &[AiComponent], value: &str) -> Result<(), Ai
                 "AI value has invalid character set".to_owned(),
             ));
         }
+        validate_component_semantics(comp, &segment)?;
         offset += consume;
     }
 
@@ -110,6 +129,25 @@ fn validate_components(components: &[AiComponent], value: &str) -> Result<(), Ai
         return Err(AidcError::InvalidPayload(
             "AI value has trailing data beyond component spec".to_owned(),
         ));
+    }
+    Ok(())
+}
+
+fn validate_component_semantics(comp: &AiComponent, segment: &str) -> Result<(), AidcError> {
+    if comp.mod10_check && !valid_mod10(segment) {
+        return Err(AidcError::InvalidPayload(
+            "AI value has invalid check digit".to_owned(),
+        ));
+    }
+
+    match comp.date_rule {
+        AiDateRule::None => {}
+        AiDateRule::YymmddStrict => validate_yymmdd(segment, false)?,
+        AiDateRule::YymmddAllowZeroDay => validate_yymmdd(segment, true)?,
+    }
+
+    if matches!(comp.time_rule, AiTimeRule::Hhmi) {
+        validate_hhmi(segment)?;
     }
     Ok(())
 }
@@ -131,5 +169,128 @@ fn validate_charset(ch: char, charset: AiCharset) -> bool {
                 | '%'
         ),
         AiCharset::Z => ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_'),
+    }
+}
+
+fn valid_mod10(value: &str) -> bool {
+    if value.len() < 2 || !value.chars().all(|c| c.is_ascii_digit()) {
+        return false;
+    }
+    let mut sum = 0u32;
+    for (idx, ch) in value[..value.len() - 1].chars().rev().enumerate() {
+        let d = u32::from((ch as u8) - b'0');
+        sum += if idx % 2 == 0 { 3 * d } else { d };
+    }
+    let check = (10 - (sum % 10)) % 10;
+    value.as_bytes()[value.len() - 1] == b'0' + (check as u8)
+}
+
+fn validate_yymmdd(value: &str, allow_zero_day: bool) -> Result<(), AidcError> {
+    if value.len() != 6 || !value.chars().all(|c| c.is_ascii_digit()) {
+        return Err(AidcError::InvalidPayload(
+            "AI value has invalid date format".to_owned(),
+        ));
+    }
+    let month = ((value.as_bytes()[2] - b'0') as u16) * 10 + u16::from(value.as_bytes()[3] - b'0');
+    let day = ((value.as_bytes()[4] - b'0') as u16) * 10 + u16::from(value.as_bytes()[5] - b'0');
+
+    if !(1..=12).contains(&month) {
+        return Err(AidcError::InvalidPayload(
+            "AI value has invalid month".to_owned(),
+        ));
+    }
+
+    if day == 0 {
+        if allow_zero_day {
+            return Ok(());
+        }
+        return Err(AidcError::InvalidPayload(
+            "AI value has invalid day".to_owned(),
+        ));
+    }
+
+    let max_day = match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 => 29,
+        _ => 0,
+    };
+    if day > max_day {
+        return Err(AidcError::InvalidPayload(
+            "AI value has invalid day".to_owned(),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_hhmi(value: &str) -> Result<(), AidcError> {
+    if value.len() != 4 || !value.chars().all(|c| c.is_ascii_digit()) {
+        return Err(AidcError::InvalidPayload(
+            "AI value has invalid time format".to_owned(),
+        ));
+    }
+    let hh = ((value.as_bytes()[0] - b'0') as u16) * 10 + u16::from(value.as_bytes()[1] - b'0');
+    let mm = ((value.as_bytes()[2] - b'0') as u16) * 10 + u16::from(value.as_bytes()[3] - b'0');
+    if hh > 23 || mm > 59 {
+        return Err(AidcError::InvalidPayload(
+            "AI value has invalid time value".to_owned(),
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_ai_value;
+
+    #[test]
+    fn validates_ai_01_numeric_fixed_length() {
+        assert!(validate_ai_value("01", "09520123456788").is_ok());
+        assert!(validate_ai_value("01", "0952012345678").is_err());
+        assert!(validate_ai_value("01", "0952012345678A").is_err());
+    }
+
+    #[test]
+    fn validates_ai_10_variable_x_charset() {
+        assert!(validate_ai_value("10", "ABC123-._/").is_ok());
+        assert!(validate_ai_value("10", "ABC\u{0001}123").is_err());
+    }
+
+    #[test]
+    fn validates_ai_17_fixed_numeric_date_shape() {
+        assert!(validate_ai_value("17", "251231").is_ok());
+        assert!(validate_ai_value("17", "250200").is_ok());
+        assert!(validate_ai_value("17", "25123").is_err());
+        assert!(validate_ai_value("17", "25AA31").is_err());
+        assert!(validate_ai_value("17", "251332").is_err());
+        assert!(validate_ai_value("17", "250231").is_err());
+    }
+
+    #[test]
+    fn validates_ai_253_multipart_constraints() {
+        assert!(validate_ai_value("253", "9520123456788").is_ok());
+        assert!(validate_ai_value("253", "9520123456788ABC").is_ok());
+        assert!(validate_ai_value("253", "9520123456787").is_err());
+        assert!(validate_ai_value("253", "1234567890123ABCDEFGHIJKLMNOPQR").is_err());
+    }
+
+    #[test]
+    fn validates_ai_8030_base64url_charset() {
+        assert!(validate_ai_value("8030", "AbC123-_").is_ok());
+        assert!(validate_ai_value("8030", "AbC/123").is_err());
+    }
+
+    #[test]
+    fn validates_mod10_for_gtin_and_gln() {
+        assert!(validate_ai_value("01", "09520123456788").is_ok());
+        assert!(validate_ai_value("01", "09520123456789").is_err());
+        assert!(validate_ai_value("414", "9520123456788").is_ok());
+        assert!(validate_ai_value("414", "9520123456787").is_err());
+    }
+
+    #[test]
+    fn validates_hhmi_time_component() {
+        assert!(validate_ai_value("7003", "2601012359").is_ok());
+        assert!(validate_ai_value("7003", "2601012460").is_err());
     }
 }
