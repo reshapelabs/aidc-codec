@@ -178,21 +178,31 @@ fn validate_component_semantics(comp: &AiComponent, segment: &str) -> Result<(),
 fn validate_charset(ch: char, charset: AiCharset) -> bool {
     match charset {
         AiCharset::N => ch.is_ascii_digit(),
-        AiCharset::X => ch.is_ascii() && !ch.is_ascii_control(),
-        AiCharset::Y => matches!(
-            ch,
-            'A'..='Z'
-                | '0'..='9'
-                | ' '
-                | '-'
-                | '.'
-                | '$'
-                | '/'
-                | '+'
-                | '%'
-        ),
+        AiCharset::X => is_ai82_char(ch),
+        AiCharset::Y => is_ai39_char(ch),
         AiCharset::Z => ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '='),
     }
+}
+
+fn is_ai82_char(ch: char) -> bool {
+    matches!(
+        ch,
+        '!' | '"' | '%' | '&' | '\'' | '(' | ')' | '*' | '+' | ',' | '-' | '.' | '/'
+            | '0'..='9'
+            | ':'
+            | ';'
+            | '<'
+            | '='
+            | '>'
+            | '?'
+            | 'A'..='Z'
+            | '_'
+            | 'a'..='z'
+    )
+}
+
+fn is_ai39_char(ch: char) -> bool {
+    matches!(ch, '#' | '-' | '/' | '0'..='9' | 'A'..='Z')
 }
 
 fn valid_mod10(value: &str) -> bool {
@@ -338,6 +348,28 @@ mod tests {
     fn validates_ai_10_variable_x_charset() {
         assert!(validate_ai_value("10", "ABC123-._/").is_ok());
         assert!(validate_ai_value("10", "ABC\u{0001}123").is_err());
+    }
+
+    #[test]
+    fn validates_ai82_boundary_vectors() {
+        assert!(validate_ai_value("91", "!\"%&'()*+,-./0123456789:;<=>?ABCXYZ_abcxyz").is_ok());
+        for invalid in [" ", "#", "@", "[", "\\", "]", "^", "`", "{", "|", "}", "~"] {
+            assert!(
+                validate_ai_value("91", invalid).is_err(),
+                "expected invalid AI82 char {invalid:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn validates_ai39_boundary_vectors() {
+        assert!(validate_ai_value("8010", "#-/0123456789ABCDEFGHIJKLMNOP").is_ok());
+        for invalid in ["a", "_", ".", "$", "+", "%", " "] {
+            assert!(
+                validate_ai_value("8010", invalid).is_err(),
+                "expected invalid AI39 char {invalid:?}"
+            );
+        }
     }
 
     #[test]
