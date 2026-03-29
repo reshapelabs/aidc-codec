@@ -1,6 +1,6 @@
 use aidc_core::AidcError;
 
-use crate::ai::{fixed_value_length, is_known_ai, validate_ai_value};
+use crate::ai::{ai_requires_fnc1, fixed_value_length, is_known_ai, validate_ai_value};
 #[cfg(feature = "gs1-dl")]
 use crate::conformance::{parse_dl_uri, DlParseOptions};
 use crate::model::{AiElement, Gs1Ai, ParseResult, ParsedPayload, Transport};
@@ -60,8 +60,12 @@ fn parse_ai_elements(input: &[u8]) -> Result<Vec<AiElement>, AidcError> {
     }
 
     let mut out = Vec::new();
-    for field in text.split('\u{001d}') {
+    let fields = text.split('\u{001d}').collect::<Vec<_>>();
+    for (idx, field) in fields.iter().enumerate() {
         if field.is_empty() {
+            if idx + 1 == fields.len() && idx > 0 {
+                continue;
+            }
             return Err(AidcError::InvalidPayload("empty FNC1-delimited field".to_owned()));
         }
         parse_field(field, &mut out)?;
@@ -87,6 +91,11 @@ fn parse_field(mut field: &str, out: &mut Vec<AiElement>) -> Result<(), AidcErro
                 value: value.to_owned(),
             });
             field = &body[n..];
+            if !field.is_empty() && ai_requires_fnc1(&ai) {
+                return Err(AidcError::InvalidPayload(
+                    "FNC1 separator required after AI".to_owned(),
+                ));
+            }
             continue;
         }
 
@@ -163,6 +172,29 @@ mod tests {
         assert_eq!(elements[1].value, "ABC123");
         assert_eq!(elements[2].ai.code(), "17");
         assert_eq!(elements[2].value, "251231");
+    }
+
+    #[test]
+    fn allows_single_trailing_fnc1_separator() {
+        let elements = parse_ai_elements(b"0109520123456788\x1d").expect("parse should succeed");
+        assert_eq!(elements.len(), 1);
+        assert_eq!(elements[0].ai.code(), "01");
+    }
+
+    #[test]
+    fn predefined_fixed_ai_can_chain_without_separator() {
+        let elements = parse_ai_elements(b"1701010110BATCH42").expect("parse should succeed");
+        assert_eq!(elements.len(), 2);
+        assert_eq!(elements[0].ai.code(), "17");
+        assert_eq!(elements[0].value, "010101");
+        assert_eq!(elements[1].ai.code(), "10");
+        assert_eq!(elements[1].value, "BATCH42");
+    }
+
+    #[test]
+    fn non_predefined_fixed_ai_requires_separator_when_followed_by_more_data() {
+        let err = parse_ai_elements(b"42620817010101").expect_err("parse should fail");
+        assert!(err.to_string().contains("FNC1 separator required after AI"));
     }
 
     #[test]
