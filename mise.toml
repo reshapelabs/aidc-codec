@@ -1,3 +1,20 @@
 [tools]
 rust = "stable"
 "cargo:cargo-nextest" = "latest"
+
+[tasks.gs1-diff]
+description = "Run GS1 differential test against local reference C library"
+run = '''
+if [ -z "${AIDC_GS1_REF_LIB:-}" ]; then
+  AIDC_GS1_REF_LIB="$PWD/gs1-reference/src/c-lib/build/libgs1encoders.dylib"
+fi
+
+if [ ! -f "$AIDC_GS1_REF_LIB" ]; then
+  echo "Missing reference library: $AIDC_GS1_REF_LIB"
+  echo "Build it with: make -C gs1-reference/src/c-lib"
+  exit 1
+fi
+
+export AIDC_GS1_REF_LIB
+cargo nextest run -p aidc-gs1 differential_scandata_matches_reference
+'''
