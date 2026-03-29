@@ -123,6 +123,27 @@ fn decode_malformed_payload_returns_invalid_payload_error() {
     assert!(matches!(err, AidcError::InvalidPayload(_)));
 }
 
+#[test]
+fn i1_decode_rejects_non_itf14_payload() {
+    let codec = Gs1Codec;
+    let err = codec
+        .decode(ScanInput::new("]I1", b"9520123456788"))
+        .expect_err("decode should fail");
+    assert!(matches!(err, AidcError::InvalidPayload(_)));
+}
+
+#[test]
+fn i1_encode_rejects_non_itf14_payload() {
+    let codec = Gs1Codec;
+    let err = codec
+        .encode(EncodeInput {
+            symbology_identifier: "]I1".to_owned(),
+            payload: CanonicalPayload::Digits("9520123456788".to_owned()),
+        })
+        .expect_err("encode should fail");
+    assert!(matches!(err, AidcError::InvalidPayload(_)));
+}
+
 fn fixed_ai_strategy() -> impl Strategy<Value = DataElement> {
     prop_oneof![
         proptest::string::string_regex("[0-9]{17}")

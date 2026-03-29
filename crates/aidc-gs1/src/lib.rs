@@ -46,9 +46,10 @@ impl TransportCodec for Gs1Codec {
     fn format_payload(&self, input: Self::EncodeRequest) -> Result<Self::TransportMsg, AidcError> {
         let transport = identify_transport(&input.symbology_identifier)?;
         let raw = encode::encode_payload(transport.kind, input.payload)?;
+        let normalized = normalize_payload(&transport, &raw)?;
         Ok(Gs1TransportMessage {
             transport,
-            normalized: raw,
+            normalized,
         })
     }
 
