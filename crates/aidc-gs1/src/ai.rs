@@ -33,6 +33,16 @@ pub struct AiComponent {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct AiReqGroup {
+    pub all_of: &'static [&'static str],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct AiReqClause {
+    pub any_of: &'static [AiReqGroup],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AiMeta {
     pub code: &'static str,
     pub fixed_len: Option<u8>,
@@ -41,8 +51,8 @@ pub struct AiMeta {
     pub dl_data_attr: bool,
     pub dl_primary_key: bool,
     pub dl_qualifiers: Option<&'static str>,
-    pub req_rules: Option<&'static str>,
-    pub ex_rules: Option<&'static str>,
+    pub req_rules: &'static [AiReqClause],
+    pub ex_rules: &'static [&'static str],
 }
 
 include!(concat!(env!("OUT_DIR"), "/ai_dictionary.rs"));
@@ -95,12 +105,8 @@ pub(crate) fn validate_message_rules<'a>(
         let Some(meta) = lookup_ai(ai) else {
             continue;
         };
-        if let Some(req) = meta.req_rules {
-            validate_required_rules(ai, req, &present)?;
-        }
-        if let Some(ex) = meta.ex_rules {
-            validate_exclusive_rules(ai, ex, &present)?;
-        }
+        validate_required_rules(ai, meta.req_rules, &present)?;
+        validate_exclusive_rules(ai, meta.ex_rules, &present)?;
     }
     Ok(())
 }
@@ -289,25 +295,29 @@ fn validate_base64url_segment(value: &str) -> Result<(), AidcError> {
     Ok(())
 }
 
-fn validate_required_rules(ai: &str, req: &str, present: &[String]) -> Result<(), AidcError> {
-    for clause in req.split(';').filter(|c| !c.is_empty()) {
-        let satisfied = clause.split(',').filter(|g| !g.is_empty()).any(|group| {
+fn validate_required_rules(
+    ai: &str,
+    req: &[AiReqClause],
+    present: &[String],
+) -> Result<(), AidcError> {
+    for clause in req {
+        let satisfied = clause.any_of.iter().any(|group| {
             group
-                .split('+')
-                .filter(|p| !p.is_empty())
+                .all_of
+                .iter()
                 .all(|pattern| present.iter().any(|x| matches_ai_pattern(x, pattern)))
         });
         if !satisfied {
             return Err(AidcError::InvalidPayload(format!(
-                "AI {ai} missing required association ({clause})"
+                "AI {ai} missing required association"
             )));
         }
     }
     Ok(())
 }
 
-fn validate_exclusive_rules(ai: &str, ex: &str, present: &[String]) -> Result<(), AidcError> {
-    for pattern in ex.split(',').filter(|p| !p.is_empty()) {
+fn validate_exclusive_rules(ai: &str, ex: &[&str], present: &[String]) -> Result<(), AidcError> {
+    for pattern in ex {
         let conflict = present
             .iter()
             .any(|other| other != ai && matches_ai_pattern(other, pattern));

@@ -11,9 +11,12 @@ struct Meta {
     dl_data_attr: bool,
     dl_primary_key: bool,
     dl_qualifiers: Option<String>,
-    req_rules: Option<String>,
-    ex_rules: Option<String>,
+    req_rules: Vec<ReqClause>,
+    ex_rules: Vec<String>,
 }
+
+type ReqGroup = Vec<String>;
+type ReqClause = Vec<ReqGroup>;
 
 #[derive(Debug, Clone, Copy)]
 enum Charset {
@@ -109,11 +112,18 @@ fn main() {
             .find_map(|a| a.strip_prefix("dlpkey=").map(str::to_owned));
         let req_groups = attrs
             .split_whitespace()
-            .filter_map(|a| a.strip_prefix("req=").map(str::to_owned))
+            .filter_map(|a| a.strip_prefix("req="))
+            .map(parse_req_clause)
             .collect::<Vec<_>>();
         let ex_groups = attrs
             .split_whitespace()
-            .filter_map(|a| a.strip_prefix("ex=").map(str::to_owned))
+            .filter_map(|a| a.strip_prefix("ex="))
+            .flat_map(|v| {
+                v.split(',')
+                    .filter(|p| !p.is_empty())
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>()
+            })
             .collect::<Vec<_>>();
 
         let meta = Meta {
@@ -123,16 +133,8 @@ fn main() {
             dl_data_attr: flags.contains('?'),
             dl_primary_key,
             dl_qualifiers,
-            req_rules: if req_groups.is_empty() {
-                None
-            } else {
-                Some(req_groups.join(";"))
-            },
-            ex_rules: if ex_groups.is_empty() {
-                None
-            } else {
-                Some(ex_groups.join(","))
-            },
+            req_rules: req_groups,
+            ex_rules: ex_groups,
         };
 
         for ai in expand_ai(ai_token) {
@@ -151,14 +153,8 @@ fn main() {
             Some(q) => format!("Some({q:?})"),
             None => "None".to_owned(),
         };
-        let req = match &m.req_rules {
-            Some(v) => format!("Some({v:?})"),
-            None => "None".to_owned(),
-        };
-        let ex = match &m.ex_rules {
-            Some(v) => format!("Some({v:?})"),
-            None => "None".to_owned(),
-        };
+        let req = render_req_rules(&m.req_rules);
+        let ex = render_ex_rules(&m.ex_rules);
         let components = m
             .components
             .iter()
@@ -294,4 +290,55 @@ fn fixed_len_from_spec(spec: &str) -> Option<u8> {
         sum = sum.checked_add(n)?;
     }
     u8::try_from(sum).ok()
+}
+
+fn parse_req_clause(s: &str) -> ReqClause {
+    s.split(',')
+        .filter(|g| !g.is_empty())
+        .map(|group| {
+            group
+                .split('+')
+                .filter(|p| !p.is_empty())
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>()
+}
+
+fn render_req_rules(rules: &[ReqClause]) -> String {
+    if rules.is_empty() {
+        return "&[]".to_owned();
+    }
+    let clauses = rules
+        .iter()
+        .map(|clause| {
+            let groups = clause
+                .iter()
+                .map(|group| {
+                    let parts = group
+                        .iter()
+                        .map(|p| format!("{p:?}"))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    format!("AiReqGroup {{ all_of: &[{parts}] }}")
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("AiReqClause {{ any_of: &[{groups}] }}")
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("&[{clauses}]")
+}
+
+fn render_ex_rules(rules: &[String]) -> String {
+    if rules.is_empty() {
+        return "&[]".to_owned();
+    }
+    let items = rules
+        .iter()
+        .map(|r| format!("{r:?}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("&[{items}]")
 }
