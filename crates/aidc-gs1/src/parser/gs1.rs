@@ -1,6 +1,8 @@
 use aidc_core::AidcError;
 
-use crate::ai::{ai_requires_fnc1, fixed_value_length, is_known_ai, validate_ai_value};
+use crate::ai::{
+    ai_requires_fnc1, fixed_value_length, is_known_ai, validate_ai_value, validate_message_rules,
+};
 #[cfg(feature = "gs1-dl")]
 use crate::conformance::{parse_dl_uri, DlParseOptions};
 use crate::model::{AiElement, Gs1Ai, ParseResult, ParsedPayload, Transport};
@@ -10,6 +12,7 @@ pub fn parse_element_string(
     normalized: Vec<u8>,
 ) -> Result<ParseResult, AidcError> {
     let elements = parse_ai_elements(&normalized)?;
+    validate_message_rules(elements.iter().map(|e| e.ai.code()))?;
 
     Ok(ParseResult {
         transport,
@@ -38,6 +41,7 @@ pub fn parse_digital_link(
     )
     .map_err(|e| AidcError::InvalidPayload(e.to_string()))?;
     let elements = parse_internal_ai_string(&internal)?;
+    validate_message_rules(elements.iter().map(|e| e.ai.code()))?;
 
     Ok(ParseResult {
         transport,
@@ -278,8 +282,6 @@ mod tests {
             proptest::string::string_regex("[0-9]{13}")
                 .expect("valid regex")
                 .prop_map(|v| ("01".to_owned(), with_mod10_check_digit(&v))),
-            (0u8..100, 1u8..13, prop_oneof![Just(0u8), 1u8..29])
-                .prop_map(|(yy, mm, dd)| ("17".to_owned(), format!("{yy:02}{mm:02}{dd:02}"))),
             proptest::string::string_regex("[0-9]{12}")
                 .expect("valid regex")
                 .prop_map(|v| ("414".to_owned(), with_mod10_check_digit(&v))),
@@ -287,17 +289,9 @@ mod tests {
     }
 
     fn variable_ai_strategy() -> impl Strategy<Value = (String, String)> {
-        prop_oneof![
-            proptest::string::string_regex("[A-Z0-9]{1,20}")
-                .expect("valid regex")
-                .prop_map(|v| ("10".to_owned(), v)),
-            proptest::string::string_regex("[A-Z0-9]{1,20}")
-                .expect("valid regex")
-                .prop_map(|v| ("21".to_owned(), v)),
-            proptest::string::string_regex("[A-Z0-9]{1,28}")
-                .expect("valid regex")
-                .prop_map(|v| ("235".to_owned(), v)),
-        ]
+        prop_oneof![proptest::string::string_regex("[A-Z0-9]{1,20}")
+            .expect("valid regex")
+            .prop_map(|v| ("91".to_owned(), v)),]
     }
 
     fn ai_segment_strategy() -> impl Strategy<Value = (String, String)> {

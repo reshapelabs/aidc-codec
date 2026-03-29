@@ -164,11 +164,20 @@ fn variable_ai_strategy() -> impl Strategy<Value = DataElement> {
                 id: "235".to_owned(),
                 value: v
             }),
+        proptest::string::string_regex("[A-Z0-9]{1,20}")
+            .expect("valid regex")
+            .prop_map(|v| DataElement {
+                id: "91".to_owned(),
+                value: v
+            }),
     ]
 }
 
-fn element_strategy() -> impl Strategy<Value = DataElement> {
-    prop_oneof![fixed_ai_strategy(), variable_ai_strategy()]
+fn dependent_element_strategy() -> impl Strategy<Value = DataElement> {
+    prop_oneof![
+        fixed_ai_strategy().prop_filter("exclude AI 01 from dependent list", |e| e.id != "01"),
+        variable_ai_strategy()
+    ]
 }
 
 fn with_mod10_check_digit(base: &str) -> String {
@@ -183,8 +192,20 @@ fn with_mod10_check_digit(base: &str) -> String {
 
 proptest! {
     #[test]
-    fn property_roundtrip_encode_decode_elements(elements in prop::collection::vec(element_strategy(), 1..8)) {
+    fn property_roundtrip_encode_decode_elements(
+        extra in prop::collection::vec(dependent_element_strategy(), 0..7)
+            .prop_filter("exclude known incompatible AI pairings", |v| {
+                let has_21 = v.iter().any(|e| e.id == "21");
+                let has_235 = v.iter().any(|e| e.id == "235");
+                !(has_21 && has_235)
+            })
+    ) {
         let codec = Gs1Codec;
+        let mut elements = vec![DataElement {
+            id: "01".to_owned(),
+            value: "09520123456788".to_owned(),
+        }];
+        elements.extend(extra.clone());
         let req = EncodeInput {
             symbology_identifier: "]d2".to_owned(),
             payload: CanonicalPayload::Elements(elements.clone()),
@@ -201,4 +222,28 @@ proptest! {
         prop_assert_eq!(got, expected);
         prop_assert!(decoded.to_hri().is_some());
     }
+}
+
+#[test]
+fn encode_rejects_missing_required_association() {
+    let codec = Gs1Codec;
+    let err = codec
+        .encode(EncodeInput {
+            symbology_identifier: "]d2".to_owned(),
+            payload: CanonicalPayload::Elements(vec![DataElement {
+                id: "10".to_owned(),
+                value: "LOT42".to_owned(),
+            }]),
+        })
+        .expect_err("encode should fail");
+    assert!(matches!(err, AidcError::InvalidPayload(_)));
+}
+
+#[test]
+fn decode_rejects_missing_required_association() {
+    let codec = Gs1Codec;
+    let err = codec
+        .decode(ScanInput::new("]d2", b"10LOT42"))
+        .expect_err("decode should fail");
+    assert!(matches!(err, AidcError::InvalidPayload(_)));
 }

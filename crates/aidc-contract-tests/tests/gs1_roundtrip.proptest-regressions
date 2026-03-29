@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 8ac2815998fac8b470b2698532340bf7114ea58d1efc35dc4af33a6ac336b400 # shrinks to elements = [DataElement { id: "00", value: "100000000023000010" }]
+cc 0d19e8119e72b7cc6f75d595d2e47bc178201114bae4102657390e7b9af65d0f # shrinks to extra = [DataElement { id: "21", value: "A" }, DataElement { id: "235", value: "0" }]

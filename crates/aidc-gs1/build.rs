@@ -11,6 +11,8 @@ struct Meta {
     dl_data_attr: bool,
     dl_primary_key: bool,
     dl_qualifiers: Option<String>,
+    req_rules: Option<String>,
+    ex_rules: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -105,6 +107,14 @@ fn main() {
         let dl_qualifiers = attrs
             .split_whitespace()
             .find_map(|a| a.strip_prefix("dlpkey=").map(str::to_owned));
+        let req_groups = attrs
+            .split_whitespace()
+            .filter_map(|a| a.strip_prefix("req=").map(str::to_owned))
+            .collect::<Vec<_>>();
+        let ex_groups = attrs
+            .split_whitespace()
+            .filter_map(|a| a.strip_prefix("ex=").map(str::to_owned))
+            .collect::<Vec<_>>();
 
         let meta = Meta {
             fixed_len,
@@ -113,6 +123,16 @@ fn main() {
             dl_data_attr: flags.contains('?'),
             dl_primary_key,
             dl_qualifiers,
+            req_rules: if req_groups.is_empty() {
+                None
+            } else {
+                Some(req_groups.join(";"))
+            },
+            ex_rules: if ex_groups.is_empty() {
+                None
+            } else {
+                Some(ex_groups.join(","))
+            },
         };
 
         for ai in expand_ai(ai_token) {
@@ -129,6 +149,14 @@ fn main() {
         };
         let quals = match &m.dl_qualifiers {
             Some(q) => format!("Some({q:?})"),
+            None => "None".to_owned(),
+        };
+        let req = match &m.req_rules {
+            Some(v) => format!("Some({v:?})"),
+            None => "None".to_owned(),
+        };
+        let ex = match &m.ex_rules {
+            Some(v) => format!("Some({v:?})"),
             None => "None".to_owned(),
         };
         let components = m
@@ -161,8 +189,8 @@ fn main() {
             .collect::<Vec<_>>()
             .join(", ");
         out.push_str(&format!(
-            "    {ai:?} => AiMeta {{ code: {ai:?}, fixed_len: {fixed}, components: &[{components}], fnc1_required: {}, dl_data_attr: {}, dl_primary_key: {}, dl_qualifiers: {} }},\n",
-            m.fnc1_required, m.dl_data_attr, m.dl_primary_key, quals
+            "    {ai:?} => AiMeta {{ code: {ai:?}, fixed_len: {fixed}, components: &[{components}], fnc1_required: {}, dl_data_attr: {}, dl_primary_key: {}, dl_qualifiers: {}, req_rules: {}, ex_rules: {} }},\n",
+            m.fnc1_required, m.dl_data_attr, m.dl_primary_key, quals, req, ex
         ));
     }
     out.push_str("};\n");

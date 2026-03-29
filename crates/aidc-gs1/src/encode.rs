@@ -1,6 +1,6 @@
 use aidc_core::{AidcError, CanonicalPayload, DataElement};
 
-use crate::ai::{ai_requires_fnc1, validate_ai_value};
+use crate::ai::{ai_requires_fnc1, validate_ai_value, validate_message_rules};
 use crate::model::TransportKind;
 
 pub fn encode_payload(
@@ -42,6 +42,7 @@ fn encode_element_string(elements: Vec<DataElement>) -> Result<Vec<u8>, AidcErro
     }
 
     let mut out = Vec::<u8>::new();
+    validate_message_rules(elements.iter().map(|e| e.id.as_str()))?;
     for (idx, element) in elements.iter().enumerate() {
         if element.id.is_empty() || !element.id.chars().all(|c| c.is_ascii_digit()) {
             return Err(AidcError::InvalidPayload(

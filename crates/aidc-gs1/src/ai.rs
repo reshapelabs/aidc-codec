@@ -41,6 +41,8 @@ pub struct AiMeta {
     pub dl_data_attr: bool,
     pub dl_primary_key: bool,
     pub dl_qualifiers: Option<&'static str>,
+    pub req_rules: Option<&'static str>,
+    pub ex_rules: Option<&'static str>,
 }
 
 include!(concat!(env!("OUT_DIR"), "/ai_dictionary.rs"));
@@ -83,6 +85,24 @@ pub(crate) fn validate_ai_value(ai: &str, value: &str) -> Result<(), AidcError> 
         return Ok(());
     };
     validate_components(meta.components, value)
+}
+
+pub(crate) fn validate_message_rules<'a>(
+    ais: impl IntoIterator<Item = &'a str>,
+) -> Result<(), AidcError> {
+    let present = ais.into_iter().map(str::to_owned).collect::<Vec<_>>();
+    for ai in &present {
+        let Some(meta) = lookup_ai(ai) else {
+            continue;
+        };
+        if let Some(req) = meta.req_rules {
+            validate_required_rules(ai, req, &present)?;
+        }
+        if let Some(ex) = meta.ex_rules {
+            validate_exclusive_rules(ai, ex, &present)?;
+        }
+    }
+    Ok(())
 }
 
 fn validate_components(components: &[AiComponent], value: &str) -> Result<(), AidcError> {
@@ -239,9 +259,53 @@ fn validate_hhmi(value: &str) -> Result<(), AidcError> {
     Ok(())
 }
 
+fn validate_required_rules(ai: &str, req: &str, present: &[String]) -> Result<(), AidcError> {
+    for clause in req.split(';').filter(|c| !c.is_empty()) {
+        let satisfied = clause.split(',').filter(|g| !g.is_empty()).any(|group| {
+            group
+                .split('+')
+                .filter(|p| !p.is_empty())
+                .all(|pattern| present.iter().any(|x| matches_ai_pattern(x, pattern)))
+        });
+        if !satisfied {
+            return Err(AidcError::InvalidPayload(format!(
+                "AI {ai} missing required association ({clause})"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn validate_exclusive_rules(ai: &str, ex: &str, present: &[String]) -> Result<(), AidcError> {
+    for pattern in ex.split(',').filter(|p| !p.is_empty()) {
+        let conflict = present
+            .iter()
+            .any(|other| other != ai && matches_ai_pattern(other, pattern));
+        if conflict {
+            return Err(AidcError::InvalidPayload(format!(
+                "AI {ai} has forbidden association ({pattern})"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn matches_ai_pattern(ai: &str, pattern: &str) -> bool {
+    if ai.len() != pattern.len() {
+        return false;
+    }
+    ai.as_bytes()
+        .iter()
+        .zip(pattern.as_bytes())
+        .all(|(a, p)| match p {
+            b'n' => a.is_ascii_digit(),
+            _ => a == p,
+        })
+}
+
 #[cfg(test)]
 mod tests {
-    use super::validate_ai_value;
+    use super::{validate_ai_value, validate_message_rules};
 
     #[test]
     fn validates_ai_01_numeric_fixed_length() {
@@ -292,5 +356,26 @@ mod tests {
     fn validates_hhmi_time_component() {
         assert!(validate_ai_value("7003", "2601012359").is_ok());
         assert!(validate_ai_value("7003", "2601012460").is_err());
+    }
+
+    #[test]
+    fn validates_required_ai_associations() {
+        assert!(validate_message_rules(["11", "01"]).is_ok());
+        assert!(validate_message_rules(["11"]).is_err());
+        assert!(validate_message_rules(["250", "21", "01"]).is_ok());
+        assert!(validate_message_rules(["250", "21"]).is_err());
+    }
+
+    #[test]
+    fn validates_exclusive_ai_associations() {
+        assert!(validate_message_rules(["01", "255"]).is_err());
+        assert!(validate_message_rules(["3940", "255"]).is_ok());
+        assert!(validate_message_rules(["3940", "3941", "255"]).is_err());
+    }
+
+    #[test]
+    fn validates_required_pattern_associations() {
+        assert!(validate_message_rules(["3920", "01", "3102"]).is_ok());
+        assert!(validate_message_rules(["3920", "01"]).is_err());
     }
 }
