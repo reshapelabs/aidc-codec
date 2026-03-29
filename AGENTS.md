@@ -27,6 +27,13 @@ Use `mise` for toolchain management (`mise.toml` pins Rust toolchain).
 - Keep parser logic small and composable; avoid large monolithic functions.
 - Avoid comments for obvious code; add comments only for non-trivial logic.
 
+## Formatting Requirements
+- Run `mise exec -- cargo fmt --all` before committing any Rust changes.
+- Keep imports clean and used; remove unused imports surfaced by `clippy`.
+- Keep error messages precise and stable (tests depend on specific error text).
+- Keep markdown/docs concise, with short headings and flat bullet lists.
+- Do not reflow large fixture files unless required for behavior changes.
+
 ## Testing Guidelines
 - Unit tests live near implementation; integration tests in `crates/*/tests`.
 - `proptest` is crucial here: use it for parser invariants, boundary handling, and malformed input behavior.
