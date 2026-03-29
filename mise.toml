@@ -18,3 +18,22 @@ fi
 export AIDC_GS1_REF_LIB
 cargo nextest run -p aidc-gs1 differential_scandata_matches_reference
 '''
+
+[tasks.gs1-diff-fuzz]
+description = "Run GS1 differential proptest fuzzing against local reference C library"
+run = '''
+if [ -z "${AIDC_GS1_REF_LIB:-}" ]; then
+  AIDC_GS1_REF_LIB="$PWD/gs1-reference/src/c-lib/build/libgs1encoders.dylib"
+fi
+
+if [ ! -f "$AIDC_GS1_REF_LIB" ]; then
+  echo "Missing reference library: $AIDC_GS1_REF_LIB"
+  echo "Build it with: make -C gs1-reference/src/c-lib"
+  exit 1
+fi
+
+export AIDC_GS1_REF_LIB
+export AIDC_GS1_DIFF_PROPTEST=1
+export AIDC_GS1_DIFF_PROPTEST_CASES="${AIDC_GS1_DIFF_PROPTEST_CASES:-512}"
+cargo nextest run -p aidc-gs1 differential_scandata_fuzz_matches_reference
+'''
