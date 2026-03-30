@@ -268,3 +268,72 @@ fn decode_rejects_missing_required_association() {
         .expect_err("decode should fail");
     assert!(matches!(err, AidcError::InvalidPayload(_)));
 }
+
+#[test]
+fn q3_percent_and_gs_separator_are_semantically_equivalent() {
+    let codec = Gs1Codec;
+    let q3_percent = codec
+        .decode(ScanInput::new("]Q3", b"0109520123456788%17251231"))
+        .expect("decode should succeed");
+    let q3_gs = codec
+        .decode(ScanInput::new("]Q3", b"0109520123456788\x1d17251231"))
+        .expect("decode should succeed");
+
+    assert_eq!(
+        elements_semantic(&q3_percent.parsed),
+        elements_semantic(&q3_gs.parsed)
+    );
+    assert_eq!(q3_percent.to_hri(), q3_gs.to_hri());
+}
+
+#[test]
+fn q3_percent_is_not_rewritten_when_gs_already_present() {
+    let codec = Gs1Codec;
+    let decoded = codec
+        .decode(ScanInput::new(
+            "]Q3",
+            b"010952012345678810ABC%123\x1d17251231",
+        ))
+        .expect("decode should succeed");
+    let got = elements_semantic(&decoded.parsed).expect("expected GS1 elements");
+    assert_eq!(
+        got,
+        vec![
+            ("01".to_owned(), "09520123456788".to_owned()),
+            ("10".to_owned(), "ABC%123".to_owned()),
+            ("17".to_owned(), "251231".to_owned()),
+        ]
+    );
+}
+
+#[test]
+fn d2_gs_separator_decodes_to_expected_elements() {
+    let codec = Gs1Codec;
+    let decoded = codec
+        .decode(ScanInput::new("]d2", b"0109520123456788\x1d17251231"))
+        .expect("decode should succeed");
+    let got = elements_semantic(&decoded.parsed).expect("expected GS1 elements");
+    assert_eq!(
+        got,
+        vec![
+            ("01".to_owned(), "09520123456788".to_owned()),
+            ("17".to_owned(), "251231".to_owned()),
+        ]
+    );
+}
+
+#[test]
+fn j1_gs_separator_decodes_to_expected_elements() {
+    let codec = Gs1Codec;
+    let decoded = codec
+        .decode(ScanInput::new("]J1", b"0109520123456788\x1d17251231"))
+        .expect("decode should succeed");
+    let got = elements_semantic(&decoded.parsed).expect("expected GS1 elements");
+    assert_eq!(
+        got,
+        vec![
+            ("01".to_owned(), "09520123456788".to_owned()),
+            ("17".to_owned(), "251231".to_owned()),
+        ]
+    );
+}
