@@ -217,6 +217,79 @@ mod tests {
     }
 
     #[test]
+    fn clause_mixed_predefined_and_variable_ordering_cases() {
+        struct Case<'a> {
+            name: &'a str,
+            raw: &'a [u8],
+            expected_elements: usize,
+            expected_err: Option<&'a str>,
+        }
+
+        let cases = [
+            Case {
+                name: "predefined_then_variable_without_separator",
+                raw: b"1701010110BATCH42",
+                expected_elements: 2,
+                expected_err: None,
+            },
+            Case {
+                name: "predefined_then_variable_with_separator",
+                raw: b"17010101\x1d10BATCH42",
+                expected_elements: 2,
+                expected_err: None,
+            },
+            Case {
+                name: "variable_then_predefined_without_separator_is_ambiguous",
+                raw: b"10BATCH4217010101",
+                expected_elements: 1,
+                expected_err: None,
+            },
+            Case {
+                name: "variable_then_predefined_with_separator",
+                raw: b"10BATCH42\x1d17010101",
+                expected_elements: 2,
+                expected_err: None,
+            },
+            Case {
+                name: "single_trailing_separator_tolerated",
+                raw: b"1701010110BATCH42\x1d",
+                expected_elements: 2,
+                expected_err: None,
+            },
+            Case {
+                name: "double_separator_rejected",
+                raw: b"17010101\x1d\x1d10BATCH42",
+                expected_elements: 0,
+                expected_err: Some("empty FNC1-delimited field"),
+            },
+        ];
+
+        for case in cases {
+            let got = parse_ai_elements(case.raw);
+            if let Some(err_text) = case.expected_err {
+                let err = got.unwrap_err();
+                assert!(
+                    err.to_string().contains(err_text),
+                    "{} should include error {:?}, got {}",
+                    case.name,
+                    err_text,
+                    err
+                );
+            } else {
+                let parsed =
+                    got.unwrap_or_else(|e| panic!("{} should parse, got {e}", case.name));
+                assert_eq!(
+                    parsed.len(),
+                    case.expected_elements,
+                    "{} expected {} elements",
+                    case.name,
+                    case.expected_elements
+                );
+            }
+        }
+    }
+
+    #[test]
     fn rejects_truncated_fixed_value() {
         let err = parse_ai_elements(b"01095201234567").expect_err("parse should fail");
         assert!(err.to_string().contains("truncated fixed-length AI value"));
