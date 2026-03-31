@@ -201,6 +201,16 @@ fn dependent_element_strategy() -> impl Strategy<Value = DataElement> {
     ]
 }
 
+fn gs1_element_carrier_strategy() -> impl Strategy<Value = &'static str> {
+    prop_oneof![
+        Just("]d2"),
+        Just("]Q3"),
+        Just("]C1"),
+        Just("]e0"),
+        Just("]J1"),
+    ]
+}
+
 fn with_mod10_check_digit(base: &str) -> String {
     let mut sum = 0u32;
     for (idx, ch) in base.chars().rev().enumerate() {
@@ -214,6 +224,7 @@ fn with_mod10_check_digit(base: &str) -> String {
 proptest! {
     #[test]
     fn property_roundtrip_encode_decode_elements(
+        carrier in gs1_element_carrier_strategy(),
         extra in prop::collection::vec(dependent_element_strategy(), 0..7)
             .prop_filter("exclude known incompatible AI pairings", |v| {
                 let has_21 = v.iter().any(|e| e.id == "21");
@@ -228,7 +239,7 @@ proptest! {
         }];
         elements.extend(extra.clone());
         let req = EncodeInput {
-            symbology_identifier: "]d2".to_owned(),
+            symbology_identifier: carrier.to_owned(),
             payload: CanonicalPayload::Elements(elements.clone()),
         };
         let encoded = codec.encode(req).expect("encode should succeed");
