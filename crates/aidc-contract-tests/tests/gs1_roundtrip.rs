@@ -30,7 +30,19 @@ fn to_encode_input_from_decoded(decoded: &ParseResult) -> Option<EncodeInput> {
                     .collect(),
             ),
         }),
-        ParsedPayload::Gs1DigitalLink { .. } | ParsedPayload::CompositePacket { .. } => None,
+        ParsedPayload::Gs1DigitalLink { .. } => None,
+        ParsedPayload::CompositePacket { cc_elements, .. } => Some(EncodeInput {
+            symbology_identifier: sym,
+            payload: CanonicalPayload::Elements(
+                cc_elements
+                    .iter()
+                    .map(|e| DataElement {
+                        id: e.ai.code().to_owned(),
+                        value: e.value.clone(),
+                    })
+                    .collect(),
+            ),
+        }),
     }
 }
 
@@ -490,6 +502,44 @@ fn ean13_composite_decode_parses_cc_ai_semantics() {
     assert_eq!(
         decoded.to_hri().as_deref(),
         Some("(01)02112345678900(99)COMPOSITE(98)XYZ")
+    );
+}
+
+#[test]
+fn ean13_composite_encode_then_decode_preserves_gs1_semantics() {
+    let codec = Gs1Codec;
+    let encoded = codec
+        .encode(EncodeInput {
+            symbology_identifier: "]E0".to_owned(),
+            payload: CanonicalPayload::Elements(vec![
+                DataElement {
+                    id: "01".to_owned(),
+                    value: "02112345678900".to_owned(),
+                },
+                DataElement {
+                    id: "99".to_owned(),
+                    value: "COMPOSITE".to_owned(),
+                },
+                DataElement {
+                    id: "98".to_owned(),
+                    value: "XYZ".to_owned(),
+                },
+            ]),
+        })
+        .expect("encode should succeed");
+    assert_eq!(encoded.symbology_identifier, "]E0");
+    assert_eq!(encoded.raw, b"2112345678900|]e099COMPOSITE\x1d98XYZ");
+
+    let decoded = codec
+        .decode(ScanInput::new(&encoded.symbology_identifier, &encoded.raw))
+        .expect("decode should succeed");
+    assert_eq!(
+        elements_semantic(&decoded.parsed),
+        Some(vec![
+            ("01".to_owned(), "02112345678900".to_owned()),
+            ("99".to_owned(), "COMPOSITE".to_owned()),
+            ("98".to_owned(), "XYZ".to_owned()),
+        ])
     );
 }
 

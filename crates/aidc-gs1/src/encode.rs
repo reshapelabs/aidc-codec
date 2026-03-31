@@ -1,13 +1,13 @@
 use aidc_core::{AidcError, CanonicalPayload, DataElement};
 
 use crate::ai::{ai_requires_fnc1, lookup_ai, validate_ai_value, validate_message_rules};
-use crate::model::TransportKind;
+use crate::model::{SymbologyId, Transport, TransportKind};
 
 pub fn encode_payload(
-    kind: TransportKind,
+    transport: &Transport,
     payload: CanonicalPayload,
 ) -> Result<Vec<u8>, AidcError> {
-    match (kind, payload) {
+    match (transport.kind, payload) {
         (TransportKind::PlainDigits, CanonicalPayload::Digits(s)) => {
             if !s.as_bytes().iter().all(u8::is_ascii_digit) {
                 return Err(AidcError::InvalidPayload(
@@ -22,9 +22,9 @@ pub fn encode_payload(
         (TransportKind::Gs1DigitalLinkUri, CanonicalPayload::Elements(elements)) => {
             encode_digital_link(elements)
         }
-        (TransportKind::Gs1CompositePacket, _) => Err(AidcError::UnsupportedTransportKind(
-            "gs1 composite packet encode not implemented".to_owned(),
-        )),
+        (TransportKind::Gs1CompositePacket, CanonicalPayload::Elements(elements)) => {
+            encode_composite_packet(transport, elements)
+        }
         (TransportKind::PlainDigits, _) => Err(AidcError::InvalidPayload(
             "digits transport requires CanonicalPayload::Digits".to_owned(),
         )),
@@ -33,6 +33,91 @@ pub fn encode_payload(
         )),
         (TransportKind::Gs1DigitalLinkUri, _) => Err(AidcError::InvalidPayload(
             "digital-link transport requires CanonicalPayload::Elements".to_owned(),
+        )),
+        (TransportKind::Gs1CompositePacket, _) => Err(AidcError::InvalidPayload(
+            "composite transport requires CanonicalPayload::Elements".to_owned(),
+        )),
+    }
+}
+
+fn encode_composite_packet(
+    transport: &Transport,
+    elements: Vec<DataElement>,
+) -> Result<Vec<u8>, AidcError> {
+    if !matches!(transport.symbology_id, SymbologyId::E0 | SymbologyId::E4) {
+        return Err(AidcError::UnsupportedTransportKind(
+            "composite encode is only supported for ]E0 and ]E4".to_owned(),
+        ));
+    }
+    if elements.len() < 2 {
+        return Err(AidcError::InvalidPayload(
+            "composite payload requires primary AI and at least one CC AI".to_owned(),
+        ));
+    }
+    if elements[0].id != "01" {
+        return Err(AidcError::InvalidPayload(
+            "composite payload must start with AI 01 primary key".to_owned(),
+        ));
+    }
+    validate_message_rules(elements.iter().map(|e| e.id.as_str()))?;
+    for element in &elements {
+        if element.id.is_empty() || !element.id.chars().all(|c| c.is_ascii_digit()) {
+            return Err(AidcError::InvalidPayload(
+                "element id must be a numeric AI code".to_owned(),
+            ));
+        }
+        validate_ai_value(&element.id, &element.value)?;
+    }
+
+    let gtin14 = canonicalized_value("01", &elements[0].value);
+    let linear = linear_from_primary(transport, &gtin14)?;
+    let cc = encode_element_string(elements.into_iter().skip(1).collect())?;
+
+    let mut out = Vec::with_capacity(linear.len() + 4 + cc.len());
+    out.extend_from_slice(linear.as_bytes());
+    out.extend_from_slice(b"|]e0");
+    out.extend_from_slice(&cc);
+    Ok(out)
+}
+
+fn linear_from_primary(transport: &Transport, gtin14: &str) -> Result<String, AidcError> {
+    if !gtin14.as_bytes().iter().all(u8::is_ascii_digit) || gtin14.len() != 14 {
+        return Err(AidcError::InvalidPayload(
+            "AI 01 primary key must be 14 numeric digits".to_owned(),
+        ));
+    }
+    match transport.symbology_id {
+        SymbologyId::E0 => {
+            if !gtin14.starts_with('0') {
+                return Err(AidcError::InvalidPayload(
+                    "EAN-13 composite primary must map from a GTIN-14 with leading zero".to_owned(),
+                ));
+            }
+            let linear = gtin14[1..].to_owned();
+            if !has_valid_mod10(linear.as_bytes()) {
+                return Err(AidcError::InvalidPayload(
+                    "invalid EAN-13 check digit derived from AI 01".to_owned(),
+                ));
+            }
+            Ok(linear)
+        }
+        SymbologyId::E4 => {
+            if !gtin14.starts_with("000000") {
+                return Err(AidcError::InvalidPayload(
+                    "EAN-8 composite primary must map from a GTIN-14 with six leading zeros"
+                        .to_owned(),
+                ));
+            }
+            let linear = gtin14[6..].to_owned();
+            if !has_valid_mod10(linear.as_bytes()) {
+                return Err(AidcError::InvalidPayload(
+                    "invalid EAN-8 check digit derived from AI 01".to_owned(),
+                ));
+            }
+            Ok(linear)
+        }
+        _ => Err(AidcError::UnsupportedTransportKind(
+            "composite encode is only supported for ]E0 and ]E4".to_owned(),
         )),
     }
 }
@@ -61,6 +146,19 @@ fn encode_element_string(elements: Vec<DataElement>) -> Result<Vec<u8>, AidcErro
         out.extend_from_slice(element.value.as_bytes());
     }
     Ok(out)
+}
+
+fn has_valid_mod10(raw: &[u8]) -> bool {
+    if raw.len() < 2 || !raw.iter().all(u8::is_ascii_digit) {
+        return false;
+    }
+    let mut sum = 0u32;
+    for (idx, b) in raw[..raw.len() - 1].iter().rev().enumerate() {
+        let d = u32::from(*b - b'0');
+        sum += if idx % 2 == 0 { 3 * d } else { d };
+    }
+    let check = (10 - (sum % 10)) % 10;
+    raw[raw.len() - 1] == (b'0' + u8::try_from(check).expect("single digit"))
 }
 
 fn encode_digital_link(elements: Vec<DataElement>) -> Result<Vec<u8>, AidcError> {
@@ -204,13 +302,17 @@ fn matches_ai_pattern(ai: &str, pattern: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::encode_payload;
-    use crate::model::TransportKind;
+    use crate::model::{CarrierFamily, SymbologyId, Transport, TransportKind};
     use aidc_core::{AidcError, CanonicalPayload, DataElement};
 
     #[test]
     fn dl_encode_builds_canonical_uri_with_qualifiers_and_sorted_query() {
         let out = encode_payload(
-            TransportKind::Gs1DigitalLinkUri,
+            &Transport {
+                symbology_id: SymbologyId::Q1,
+                carrier: CarrierFamily::Qr,
+                kind: TransportKind::Gs1DigitalLinkUri,
+            },
             CanonicalPayload::Elements(vec![
                 DataElement {
                     id: "01".to_owned(),
@@ -245,7 +347,11 @@ mod tests {
     #[test]
     fn dl_encode_rejects_payload_without_primary_key() {
         let err = encode_payload(
-            TransportKind::Gs1DigitalLinkUri,
+            &Transport {
+                symbology_id: SymbologyId::Q1,
+                carrier: CarrierFamily::Qr,
+                kind: TransportKind::Gs1DigitalLinkUri,
+            },
             CanonicalPayload::Elements(vec![DataElement {
                 id: "99".to_owned(),
                 value: "LOT42".to_owned(),
@@ -260,7 +366,11 @@ mod tests {
     #[test]
     fn dl_encode_rejects_non_data_attribute_in_query_position() {
         let err = encode_payload(
-            TransportKind::Gs1DigitalLinkUri,
+            &Transport {
+                symbology_id: SymbologyId::Q1,
+                carrier: CarrierFamily::Qr,
+                kind: TransportKind::Gs1DigitalLinkUri,
+            },
             CanonicalPayload::Elements(vec![
                 DataElement {
                     id: "01".to_owned(),
@@ -279,13 +389,69 @@ mod tests {
     }
 
     #[test]
-    fn composite_encode_is_not_implemented() {
+    fn composite_encode_builds_ean13_packet() {
+        let out = encode_payload(
+            &Transport {
+                symbology_id: SymbologyId::E0,
+                carrier: CarrierFamily::Gs1Composite,
+                kind: TransportKind::Gs1CompositePacket,
+            },
+            CanonicalPayload::Elements(vec![
+                DataElement {
+                    id: "01".to_owned(),
+                    value: "02112345678900".to_owned(),
+                },
+                DataElement {
+                    id: "99".to_owned(),
+                    value: "COMPOSITE".to_owned(),
+                },
+                DataElement {
+                    id: "98".to_owned(),
+                    value: "XYZ".to_owned(),
+                },
+            ]),
+        )
+        .expect("encode should succeed");
+        assert_eq!(out, b"2112345678900|]e099COMPOSITE\x1d98XYZ");
+    }
+
+    #[test]
+    fn composite_encode_rejects_missing_cc_ai() {
         let err = encode_payload(
-            TransportKind::Gs1CompositePacket,
+            &Transport {
+                symbology_id: SymbologyId::E0,
+                carrier: CarrierFamily::Gs1Composite,
+                kind: TransportKind::Gs1CompositePacket,
+            },
             CanonicalPayload::Elements(vec![DataElement {
                 id: "01".to_owned(),
                 value: "09520123456788".to_owned(),
             }]),
+        )
+        .expect_err("encode should fail");
+        assert!(err
+            .to_string()
+            .contains("composite payload requires primary AI and at least one CC AI"));
+    }
+
+    #[test]
+    fn composite_encode_rejects_non_ean_symbology() {
+        let err = encode_payload(
+            &Transport {
+                symbology_id: SymbologyId::LowerE1,
+                carrier: CarrierFamily::Gs1Composite,
+                kind: TransportKind::Gs1CompositePacket,
+            },
+            CanonicalPayload::Elements(vec![
+                DataElement {
+                    id: "01".to_owned(),
+                    value: "09520123456788".to_owned(),
+                },
+                DataElement {
+                    id: "99".to_owned(),
+                    value: "ABC".to_owned(),
+                },
+            ]),
         )
         .expect_err("encode should fail");
         assert!(matches!(err, AidcError::UnsupportedTransportKind(_)));
@@ -294,7 +460,11 @@ mod tests {
     #[test]
     fn dl_encode_rejects_repeated_ai_keys() {
         let err = encode_payload(
-            TransportKind::Gs1DigitalLinkUri,
+            &Transport {
+                symbology_id: SymbologyId::Q1,
+                carrier: CarrierFamily::Qr,
+                kind: TransportKind::Gs1DigitalLinkUri,
+            },
             CanonicalPayload::Elements(vec![
                 DataElement {
                     id: "01".to_owned(),
