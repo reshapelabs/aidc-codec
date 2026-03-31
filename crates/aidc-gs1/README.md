@@ -26,7 +26,7 @@ This crate tracks GS1 conformance using a requirement matrix.
 - `GAP`: not implemented or not sufficiently tested
 - `N/A`: out of scope (with rationale)
 
-### Requirement Matrix (First 30 Entries)
+### Requirement Matrix (First 60 Entries)
 
 | Requirement ID | GS1 Clause | Requirement Summary | Scope | Status | Evidence (tests/fixtures) | Implementation (file) | Notes |
 |---|---|---|---|---|---|---|---|
@@ -60,6 +60,38 @@ This crate tracks GS1 conformance using a requirement matrix.
 | GS1-7.9.4-01 | 7.9.4 | Five-digit price-field check digit calculation | In | PASS | `price_or_weight_check_digit_vectors` | `src/check.rs` | |
 | GS1-7.9.5-01 | 7.9.5 | Alphanumeric check-character pair calculation | In | PASS | `check_character_pair_vectors` | `src/check.rs` | |
 | GS1-DL-ENC-001 | GS1 Digital Link Std | GS1 Digital Link encode from canonical payload | In | GAP | N/A | `src/encode.rs` | Not implemented. |
+| GS1-7.3-03 | 7.3 | Required AI pattern associations enforced | In | PASS | `validates_required_pattern_associations` | `src/ai.rs` | |
+| GS1-7.4-02 | 7.4 | AI `01` fixed numeric length and charset enforcement | In | PASS | `validates_ai_01_numeric_fixed_length` | `src/ai.rs` | |
+| GS1-7.4-03 | 7.4 | AI `10` variable-length AI82 charset enforcement | In | PASS | `validates_ai_10_variable_x_charset` | `src/ai.rs` | |
+| GS1-7.4-04 | 7.4 | AI82 character-class boundary validation | In | PASS | `validates_ai82_boundary_vectors` | `src/ai.rs` | |
+| GS1-7.4-05 | 7.4 | AI39 character-class boundary validation | In | PASS | `validates_ai39_boundary_vectors` | `src/ai.rs` | |
+| GS1-7.4-06 | 7.4 | YYMMDD date component validation (month/day bounds) | In | PASS | `validates_ai_17_fixed_numeric_date_shape` | `src/ai.rs` | |
+| GS1-7.4-07 | 7.4 | Multi-component AI segment constraints validated (AI `253`) | In | PASS | `validates_ai_253_multipart_constraints` | `src/ai.rs` | |
+| GS1-7.4-08 | 7.4 | Base64url value constraints validated (AI `8030`) | In | PASS | `validates_ai_8030_base64url_charset` | `src/ai.rs` | |
+| GS1-7.4-09 | 7.4 | Time component validation (HHMI) where specified | In | PASS | `validates_hhmi_time_component` | `src/ai.rs` | |
+| GS1-7.4-10 | 7.4 | Empty AI values rejected during parse/validation | In | PASS | `conformance_parse_ai_vectors`, `parse_ai_elements` | `src/conformance.rs`, `src/parser/gs1.rs` | |
+| GS1-7.8.2-02 | 7.8.2 | Unknown AI codes rejected in element parser | In | PASS | `rejects_unknown_ai` | `src/parser/gs1.rs` | |
+| GS1-7.8.2-03 | 7.8.2 | Truncated fixed-length AI values rejected | In | PASS | `rejects_truncated_fixed_value` | `src/parser/gs1.rs` | |
+| GS1-7.8.5-02 | 7.8.5 | Parsed GS1 element strings render deterministic HRI output | In | PASS | `parse_result_hri_formats_ai_elements`, `hri_is_deterministic_for_parsed_element_strings` | `src/parser/gs1.rs` | |
+| GS1-7.8.5-03 | 7.8.5 | Non-GS1 payloads do not produce HRI output | In | PASS | `non_gs1_payload_has_no_hri` | `src/parser/gs1.rs` | |
+| GS1-7.8.4-05 | 7.8.4 | QR `%` and `<GS>` separators treated equivalently for normalization path | In | PASS | `q3_percent_and_gs_separator_are_semantically_equivalent` | `src/normalize.rs`, `src/conformance.rs` | |
+| GS1-7.8.4-06 | 7.8.4 | `%` retained when explicit `<GS>` already exists in QR payload | In | PASS | `q3_keeps_percent_when_gs_already_present` | `src/normalize.rs` | |
+| GS1-DL-001 | GS1 Digital Link Std | DL URI corpus passes parse conformance fixtures | In | PASS | `conformance_dl_parse_vectors` | `src/conformance.rs` | |
+| GS1-DL-002 | GS1 Digital Link Std | DL URI accepts only supported schemes (`http`/`https`) | In | PASS | `conformance_dl_parse_vectors` | `src/conformance.rs` | |
+| GS1-DL-003 | GS1 Digital Link Std | Illegal DL URI characters are rejected | In | PASS | `conformance_dl_parse_vectors` | `src/conformance.rs` | |
+| GS1-DL-004 | GS1 Digital Link Std | DL URI authority/path structural validation enforced | In | PASS | `conformance_dl_parse_vectors` | `src/conformance.rs` | |
+| GS1-DL-005 | GS1 Digital Link Std | Primary key AI required in DL path | In | PASS | `conformance_dl_parse_vectors` | `src/conformance.rs` | |
+| GS1-DL-006 | GS1 Digital Link Std | Path qualifier validity enforced per primary AI | In | PASS | `conformance_dl_parse_vectors` | `src/conformance.rs` | |
+| GS1-DL-007 | GS1 Digital Link Std | Percent-decoding supports values and rejects NUL escapes | In | PASS | `conformance_dl_parse_vectors` | `src/conformance.rs` | |
+| GS1-DL-008 | GS1 Digital Link Std | Duplicate AI across path/query rejected | In | PASS | `dl_query_duplicate_ai_is_rejected`, `dl_query_path_duplicate_ai_is_rejected` | `src/conformance.rs` | |
+| GS1-DL-009 | GS1 Digital Link Std | Query AI ordering preserved in internal representation | In | PASS | `dl_query_order_is_preserved_in_internal_representation` | `src/conformance.rs` | |
+| GS1-DL-010 | GS1 Digital Link Std | Variable path fields followed by query insert separators correctly | In | PASS | `dl_path_then_query_variable_fields_insert_separator` | `src/conformance.rs` | |
+| GS1-DL-011 | GS1 Digital Link Std | Unknown numeric query AI policy is option-controlled | In | PARTIAL | `conformance_dl_parse_vectors` | `src/conformance.rs` | Covered by fixtures; dedicated unit tests per option branch still missing. |
+| GS1-DL-012 | GS1 Digital Link Std | Convenience alpha key mapping is option-controlled | In | PARTIAL | `conformance_dl_parse_vectors` | `src/conformance.rs` | Covered by fixtures; dedicated unit tests per mapping key still missing. |
+| GS1-DL-013 | GS1 Digital Link Std | Zero-suppressed GTIN handling is option-controlled | In | PASS | `conformance_dl_parse_vectors` | `src/conformance.rs` | |
+| GS1-DL-014 | GS1 Digital Link Std | Parsed DL payload converts into typed AI element list | In | PASS | `parses_digital_link_into_ai_elements` | `src/parser/gs1.rs` | |
+| GS1-7.8-01 | 7.8 | Bracketed AI payloads parse into internal `^` representation | In | PASS | `conformance_parse_ai_vectors` | `src/conformance.rs` | |
+| GS1-7.8-02 | 7.8 | Escaped literal `(` is preserved in bracketed AI values | In | PASS | `conformance_parse_ai_vectors` | `src/conformance.rs` | |
 
 ### Update Protocol
 
