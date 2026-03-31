@@ -416,6 +416,29 @@ mod tests {
     }
 
     #[test]
+    fn composite_encode_builds_ean8_packet() {
+        let out = encode_payload(
+            &Transport {
+                symbology_id: SymbologyId::E4,
+                carrier: CarrierFamily::Gs1Composite,
+                kind: TransportKind::Gs1CompositePacket,
+            },
+            CanonicalPayload::Elements(vec![
+                DataElement {
+                    id: "01".to_owned(),
+                    value: "00000002345673".to_owned(),
+                },
+                DataElement {
+                    id: "99".to_owned(),
+                    value: "ABC".to_owned(),
+                },
+            ]),
+        )
+        .expect("encode should succeed");
+        assert_eq!(out, b"02345673|]e099ABC");
+    }
+
+    #[test]
     fn composite_encode_rejects_missing_cc_ai() {
         let err = encode_payload(
             &Transport {
@@ -432,6 +455,52 @@ mod tests {
         assert!(err
             .to_string()
             .contains("composite payload requires primary AI and at least one CC AI"));
+    }
+
+    #[test]
+    fn composite_encode_rejects_ean13_primary_without_leading_zero() {
+        let err = encode_payload(
+            &Transport {
+                symbology_id: SymbologyId::E0,
+                carrier: CarrierFamily::Gs1Composite,
+                kind: TransportKind::Gs1CompositePacket,
+            },
+            CanonicalPayload::Elements(vec![
+                DataElement {
+                    id: "01".to_owned(),
+                    value: "12345678901231".to_owned(),
+                },
+                DataElement {
+                    id: "99".to_owned(),
+                    value: "ABC".to_owned(),
+                },
+            ]),
+        )
+        .expect_err("encode should fail");
+        assert!(err.to_string().contains("GTIN-14 with leading zero"));
+    }
+
+    #[test]
+    fn composite_encode_rejects_ean8_primary_without_six_leading_zeros() {
+        let err = encode_payload(
+            &Transport {
+                symbology_id: SymbologyId::E4,
+                carrier: CarrierFamily::Gs1Composite,
+                kind: TransportKind::Gs1CompositePacket,
+            },
+            CanonicalPayload::Elements(vec![
+                DataElement {
+                    id: "01".to_owned(),
+                    value: "09520123456788".to_owned(),
+                },
+                DataElement {
+                    id: "99".to_owned(),
+                    value: "ABC".to_owned(),
+                },
+            ]),
+        )
+        .expect_err("encode should fail");
+        assert!(err.to_string().contains("GTIN-14 with six leading zeros"));
     }
 
     #[test]

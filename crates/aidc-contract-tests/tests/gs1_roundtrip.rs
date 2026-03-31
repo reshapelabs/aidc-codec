@@ -544,6 +544,39 @@ fn ean13_composite_encode_then_decode_preserves_gs1_semantics() {
 }
 
 #[test]
+fn ean8_composite_encode_then_decode_preserves_gs1_semantics() {
+    let codec = Gs1Codec;
+    let encoded = codec
+        .encode(EncodeInput {
+            symbology_identifier: "]E4".to_owned(),
+            payload: CanonicalPayload::Elements(vec![
+                DataElement {
+                    id: "01".to_owned(),
+                    value: "00000002345673".to_owned(),
+                },
+                DataElement {
+                    id: "99".to_owned(),
+                    value: "ABC".to_owned(),
+                },
+            ]),
+        })
+        .expect("encode should succeed");
+    assert_eq!(encoded.symbology_identifier, "]E4");
+    assert_eq!(encoded.raw, b"02345673|]e099ABC");
+
+    let decoded = codec
+        .decode(ScanInput::new(&encoded.symbology_identifier, &encoded.raw))
+        .expect("decode should succeed");
+    assert_eq!(
+        elements_semantic(&decoded.parsed),
+        Some(vec![
+            ("01".to_owned(), "00000002345673".to_owned()),
+            ("99".to_owned(), "ABC".to_owned()),
+        ])
+    );
+}
+
+#[test]
 fn ean8_composite_decode_rejects_missing_cc_payload() {
     let codec = Gs1Codec;
     let err = codec
