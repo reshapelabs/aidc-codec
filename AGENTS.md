@@ -40,6 +40,8 @@ Use `mise` for toolchain management (`mise.toml` pins Rust toolchain).
 - Keep `proptest-regressions` files committed when they capture real failures.
 - Add deterministic fixture tests for all critical behavior changes.
 - Run `clippy` (with `-D warnings`) before committing.
+- For GS1 behavior/spec changes, update `crates/aidc-gs1/README.md` conformance matrix rows and link test/fixture evidence in the same change.
+- For GS1 dictionary-source updates, update both `crates/aidc-gs1/data/gs1-syntax-dictionary.lock.json` and the "Current Dictionary Source" block in `crates/aidc-gs1/README.md`.
 
 When adding a new codec/spec crate, prioritize borrowing/adapting authoritative external conformance tests and vectors (reference repos/spec suites) before expanding custom tests.
 

@@ -39,6 +39,16 @@ struct ClauseScanDataProcessCase {
     expected_data: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct DictionaryLock {
+    upstream_repo: String,
+    upstream_ref: String,
+    upstream_commit: String,
+    upstream_dictionary_path: String,
+    source_sha256: String,
+    fetched_at_utc: String,
+}
+
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
 }
@@ -71,6 +81,14 @@ fn load_dl_parse_cases() -> Vec<DlParseCase> {
 
 fn load_clause_scandata_process_cases() -> Vec<ClauseScanDataProcessCase> {
     read_jsonl("clause_scandata_process.jsonl")
+}
+
+fn load_dictionary_lock() -> DictionaryLock {
+    let path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data/gs1-syntax-dictionary.lock.json");
+    let raw = fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
+    serde_json::from_str(&raw).unwrap_or_else(|e| panic!("failed to parse {}: {e}", path.display()))
 }
 
 #[test]
@@ -141,6 +159,22 @@ fn fixtures_sanity_clause_scandata_process() {
         unique_clause_count >= 3,
         "expected at least 3 unique clause ids, got {unique_clause_count}"
     );
+}
+
+#[test]
+fn fixtures_sanity_dictionary_lock() {
+    let lock = load_dictionary_lock();
+    assert_eq!(
+        lock.upstream_repo,
+        "https://github.com/gs1/gs1-syntax-dictionary"
+    );
+    assert_eq!(lock.upstream_ref, "main");
+    assert_eq!(lock.upstream_commit.len(), 40);
+    assert!(lock.upstream_commit.chars().all(|c| c.is_ascii_hexdigit()));
+    assert_eq!(lock.upstream_dictionary_path, "gs1-syntax-dictionary.txt");
+    assert_eq!(lock.source_sha256.len(), 64);
+    assert!(lock.source_sha256.chars().all(|c| c.is_ascii_hexdigit()));
+    assert!(lock.fetched_at_utc.ends_with('Z'));
 }
 
 #[test]

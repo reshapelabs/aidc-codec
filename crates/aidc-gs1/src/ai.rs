@@ -57,6 +57,27 @@ pub struct AiMeta {
 
 include!(concat!(env!("OUT_DIR"), "/ai_dictionary.rs"));
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DictionarySourceProvenance {
+    pub repo: &'static str,
+    pub source_ref: &'static str,
+    pub commit: &'static str,
+    pub path: &'static str,
+    pub sha256: &'static str,
+    pub fetched_at_utc: &'static str,
+}
+
+pub fn dictionary_source_provenance() -> DictionarySourceProvenance {
+    DictionarySourceProvenance {
+        repo: AI_DICTIONARY_SOURCE_REPO,
+        source_ref: AI_DICTIONARY_SOURCE_REF,
+        commit: AI_DICTIONARY_SOURCE_COMMIT,
+        path: AI_DICTIONARY_SOURCE_PATH,
+        sha256: AI_DICTIONARY_SOURCE_SHA256,
+        fetched_at_utc: AI_DICTIONARY_FETCHED_AT_UTC,
+    }
+}
+
 pub(crate) fn lookup_ai(ai: &str) -> Option<&'static AiMeta> {
     AI_DICTIONARY.get(ai)
 }
@@ -345,7 +366,10 @@ fn matches_ai_pattern(ai: &str, pattern: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_ai_value, validate_message_rules};
+    use super::{
+        validate_ai_value, validate_message_rules, AI_DICTIONARY_FETCHED_AT_UTC,
+        AI_DICTIONARY_SOURCE_COMMIT, AI_DICTIONARY_SOURCE_REPO, AI_DICTIONARY_SOURCE_SHA256,
+    };
 
     #[test]
     fn validates_ai_01_numeric_fixed_length() {
@@ -484,5 +508,31 @@ mod tests {
     fn validates_required_pattern_associations() {
         assert!(validate_message_rules(["3920", "01", "3102"]).is_ok());
         assert!(validate_message_rules(["3920", "01"]).is_err());
+    }
+
+    #[test]
+    fn dictionary_source_provenance_constants_are_present() {
+        assert_eq!(
+            AI_DICTIONARY_SOURCE_REPO,
+            "https://github.com/gs1/gs1-syntax-dictionary"
+        );
+        assert_eq!(AI_DICTIONARY_SOURCE_COMMIT.len(), 40);
+        assert!(AI_DICTIONARY_SOURCE_COMMIT
+            .chars()
+            .all(|c| c.is_ascii_hexdigit()));
+        assert_eq!(AI_DICTIONARY_SOURCE_SHA256.len(), 64);
+        assert!(AI_DICTIONARY_SOURCE_SHA256
+            .chars()
+            .all(|c| c.is_ascii_hexdigit()));
+        assert!(AI_DICTIONARY_FETCHED_AT_UTC.ends_with('Z'));
+    }
+
+    #[test]
+    fn crate_readme_mentions_pinned_dictionary_commit() {
+        let readme = include_str!("../README.md");
+        assert!(
+            readme.contains(AI_DICTIONARY_SOURCE_COMMIT),
+            "crate README should include pinned dictionary commit"
+        );
     }
 }

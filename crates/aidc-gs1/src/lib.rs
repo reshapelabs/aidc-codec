@@ -10,6 +10,7 @@ pub mod variable_measure;
 
 use aidc_core::{AidcError, EncodeInput, EncodedScan, ScanInput, TransportCodec};
 
+pub use ai::{dictionary_source_provenance, DictionarySourceProvenance};
 pub use conformance::{
     parse_bracketed_ai, parse_dl_uri, process_scan_data, DlParseOptions, ScanDataOutcome,
 };

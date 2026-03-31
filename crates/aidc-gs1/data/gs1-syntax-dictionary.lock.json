@@ -1,0 +1,8 @@
+{
+  "upstream_repo": "https://github.com/gs1/gs1-syntax-dictionary",
+  "upstream_ref": "main",
+  "upstream_commit": "2dceb36b5a8aa0b413554fa886c470f34afdd43a",
+  "upstream_dictionary_path": "gs1-syntax-dictionary.txt",
+  "source_sha256": "3e0e1680a0bb5a5af13c863a4d8d6075f5766a09c463a78e0168d7330eecf779",
+  "fetched_at_utc": "2026-03-31T00:00:00Z"
+}

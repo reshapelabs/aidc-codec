@@ -6,6 +6,7 @@ Rust workspace for AIDC codec implementations (encode/decode) behind a shared in
 
 - `aidc-core`: shared transport/parser traits and common error types
 - `aidc-gs1`: GS1 transport identification, normalization, and parsing
+  - conformance matrix scaffold: `crates/aidc-gs1/README.md`
 
 ## Status
 
