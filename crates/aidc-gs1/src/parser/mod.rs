@@ -3,16 +3,28 @@ mod gs1;
 
 use aidc_core::AidcError;
 
-use crate::model::{Gs1TransportMessage, ParseResult, ParsedPayload, TransportKind};
+use crate::model::{Gs1TransportMessage, ParseResult, ParsedPayload, SymbologyId, TransportKind};
 
 pub fn parse_payload(message: Gs1TransportMessage) -> Result<ParseResult, AidcError> {
     match message.transport.kind {
-        TransportKind::PlainDigits => Ok(ParseResult {
-            transport: message.transport,
-            parsed: ParsedPayload::Digits(String::from_utf8(message.normalized).map_err(|_| {
-                AidcError::InvalidPayload("digits were not valid UTF-8".to_owned())
-            })?),
-        }),
+        TransportKind::PlainDigits => {
+            #[cfg(feature = "gs1-composite")]
+            {
+                if matches!(
+                    message.transport.symbology_id,
+                    SymbologyId::E0 | SymbologyId::E4
+                ) && message.normalized.windows(4).any(|w| w == b"|]e0")
+                {
+                    return gs1::parse_composite_packet(message.transport, message.normalized);
+                }
+            }
+            Ok(ParseResult {
+                transport: message.transport,
+                parsed: ParsedPayload::Digits(String::from_utf8(message.normalized).map_err(
+                    |_| AidcError::InvalidPayload("digits were not valid UTF-8".to_owned()),
+                )?),
+            })
+        }
         TransportKind::Gs1ElementString => {
             #[cfg(feature = "gs1-core")]
             {

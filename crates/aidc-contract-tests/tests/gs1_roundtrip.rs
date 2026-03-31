@@ -30,7 +30,7 @@ fn to_encode_input_from_decoded(decoded: &ParseResult) -> Option<EncodeInput> {
                     .collect(),
             ),
         }),
-        ParsedPayload::Gs1DigitalLink { .. } | ParsedPayload::CompositePacket(_) => None,
+        ParsedPayload::Gs1DigitalLink { .. } | ParsedPayload::CompositePacket { .. } => None,
     }
 }
 
@@ -467,4 +467,33 @@ fn carrier_separator_legality_matrix() {
             assert!(got.is_err(), "{} should fail", case.name);
         }
     }
+}
+
+#[test]
+fn ean13_composite_decode_parses_cc_ai_semantics() {
+    let codec = Gs1Codec;
+    let decoded = codec
+        .decode(ScanInput::new(
+            "]E0",
+            b"2112345678900|]e099COMPOSITE\x1d98XYZ",
+        ))
+        .expect("decode should succeed");
+    let got = elements_semantic(&decoded.parsed).expect("expected composite CC elements");
+    assert_eq!(
+        got,
+        vec![
+            ("99".to_owned(), "COMPOSITE".to_owned()),
+            ("98".to_owned(), "XYZ".to_owned()),
+        ]
+    );
+    assert_eq!(decoded.to_hri().as_deref(), Some("(99)COMPOSITE(98)XYZ"));
+}
+
+#[test]
+fn ean8_composite_decode_rejects_missing_cc_payload() {
+    let codec = Gs1Codec;
+    let err = codec
+        .decode(ScanInput::new("]E4", b"02345673|]e0"))
+        .expect_err("decode should fail");
+    assert!(matches!(err, AidcError::InvalidPayload(_)));
 }

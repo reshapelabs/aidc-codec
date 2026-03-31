@@ -164,7 +164,11 @@ pub enum ParsedPayload {
         uri: String,
         elements: Vec<AiElement>,
     },
-    CompositePacket(Vec<u8>),
+    CompositePacket {
+        original: Vec<u8>,
+        linear: String,
+        cc_elements: Vec<AiElement>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -178,7 +182,8 @@ impl ParsedPayload {
         match self {
             Self::Gs1ElementString { elements, .. } => Some(elements),
             Self::Gs1DigitalLink { elements, .. } => Some(elements),
-            Self::Digits(_) | Self::CompositePacket(_) => None,
+            Self::CompositePacket { cc_elements, .. } => Some(cc_elements),
+            Self::Digits(_) => None,
         }
     }
 

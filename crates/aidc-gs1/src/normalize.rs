@@ -25,6 +25,48 @@ fn normalize_element_string(transport: &Transport, raw: &[u8]) -> Result<Vec<u8>
 }
 
 fn normalize_digits(transport: &Transport, raw: &[u8]) -> Result<Vec<u8>, AidcError> {
+    if matches!(transport.symbology_id, SymbologyId::E0 | SymbologyId::E4)
+        && raw.windows(4).any(|w| w == b"|]e0")
+    {
+        let text = std::str::from_utf8(raw).map_err(|_| {
+            AidcError::InvalidPayload("EAN/UPC composite payload must be valid UTF-8".to_owned())
+        })?;
+        let (primary, cc) = text.split_once("|]e0").ok_or_else(|| {
+            AidcError::InvalidPayload("EAN/UPC composite payload missing '|]e0'".to_owned())
+        })?;
+        let expected_len = if matches!(transport.symbology_id, SymbologyId::E0) {
+            13usize
+        } else {
+            8usize
+        };
+        if primary.len() != expected_len || !primary.as_bytes().iter().all(u8::is_ascii_digit) {
+            return Err(AidcError::InvalidPayload(
+                "invalid EAN primary data".to_owned(),
+            ));
+        }
+        if !has_valid_mod10(primary.as_bytes()) {
+            return Err(AidcError::InvalidPayload(
+                "invalid EAN check digit".to_owned(),
+            ));
+        }
+        if cc.is_empty() {
+            return Err(AidcError::InvalidPayload(
+                "empty composite payload".to_owned(),
+            ));
+        }
+        if text.matches("|]e0").count() > 1 {
+            return Err(AidcError::InvalidPayload(
+                "composite payload must contain one '|]e0' separator".to_owned(),
+            ));
+        }
+        if cc.contains('^') {
+            return Err(AidcError::InvalidPayload(
+                "raw '^' is not valid in composite payload".to_owned(),
+            ));
+        }
+        return Ok(raw.to_vec());
+    }
+
     if !raw.iter().all(u8::is_ascii_digit) {
         return Err(AidcError::InvalidPayload(
             "plain-digit transport must contain only ASCII digits".to_owned(),

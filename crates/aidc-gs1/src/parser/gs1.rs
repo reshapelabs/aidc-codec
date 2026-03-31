@@ -77,10 +77,17 @@ pub fn parse_composite_packet(
             "composite packet must contain only one '|]e0' separator".to_owned(),
         ));
     }
+    let linear = linear.to_owned();
+    let cc = cc.to_owned();
+    let cc_elements = parse_ai_elements(cc.as_bytes())?;
 
     Ok(ParseResult {
         transport,
-        parsed: ParsedPayload::CompositePacket(normalized),
+        parsed: ParsedPayload::CompositePacket {
+            original: normalized,
+            linear,
+            cc_elements,
+        },
     })
 }
 
@@ -175,8 +182,7 @@ fn has_ambiguous_following_element(ai: &str, body: &str) -> bool {
     false
 }
 
-#[cfg(feature = "gs1-dl")]
-fn parse_internal_ai_string(input: &str) -> Result<Vec<AiElement>, AidcError> {
+pub(crate) fn parse_internal_ai_string(input: &str) -> Result<Vec<AiElement>, AidcError> {
     if !input.starts_with('^') || input.len() == 1 {
         return Err(AidcError::InvalidPayload(
             "internal GS1 AI string must start with '^' and contain data".to_owned(),
@@ -409,8 +415,16 @@ mod tests {
             super::parse_composite_packet(transport, b"2112345678900|]e00109520123456788".to_vec())
                 .expect("parse should succeed");
         match parsed.parsed {
-            ParsedPayload::CompositePacket(raw) => {
-                assert_eq!(raw, b"2112345678900|]e00109520123456788");
+            ParsedPayload::CompositePacket {
+                original,
+                linear,
+                cc_elements,
+            } => {
+                assert_eq!(original, b"2112345678900|]e00109520123456788");
+                assert_eq!(linear, "2112345678900");
+                assert_eq!(cc_elements.len(), 1);
+                assert_eq!(cc_elements[0].ai.code(), "01");
+                assert_eq!(cc_elements[0].value, "09520123456788");
             }
             other => panic!("unexpected parsed payload: {other:?}"),
         }
