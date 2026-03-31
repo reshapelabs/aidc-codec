@@ -26,17 +26,40 @@ This crate tracks GS1 conformance using a requirement matrix.
 - `GAP`: not implemented or not sufficiently tested
 - `N/A`: out of scope (with rationale)
 
-### Requirement Matrix Scaffold
+### Requirement Matrix (First 30 Entries)
 
 | Requirement ID | GS1 Clause | Requirement Summary | Scope | Status | Evidence (tests/fixtures) | Implementation (file) | Notes |
 |---|---|---|---|---|---|---|---|
-| GS1-SCAN-001 | 7.2.2 | AIM scan data includes symbology identifier | In | PASS | `conformance_clause_scandata_vectors`, `clause_scandata_process.jsonl` | `src/conformance.rs` | |
-| GS1-SCAN-002 | 7.8.4 | Separator representation handling by carrier | In | PARTIAL | `carrier_separator_legality_matrix`, `clause_scandata_process.jsonl` | `src/normalize.rs`, `src/conformance.rs` | Parse-layer vs process-layer behavior differs; keep explicitly documented. |
-| GS1-SCAN-003 | 7.8.6.2 | Invalid separator sequences are rejected in element parsing | In | PASS | `clause_mixed_predefined_and_variable_ordering_cases`, `fnc1_double_separator_is_rejected` | `src/parser/gs1.rs` | |
-| GS1-DL-001 | 6.x/8.x | DL URI parse to internal AI form | In | PASS | `conformance_dl_parse_vectors` | `src/conformance.rs` | Keep list of covered DL sub-clauses here. |
-| GS1-DL-002 | 6.x/8.x | DL URI encode from canonical payload | In | GAP | N/A | `src/encode.rs` | Currently unsupported encode path. |
-| GS1-CMP-001 | Composite | Composite packet semantic parse/validation | In | GAP | N/A | `src/parser/gs1.rs` | Currently pass-through parse only. |
-| GS1-TRP-001 | Symbology mapping | Supported symbology mapping behavior | In | PARTIAL | `conformance_scandata_process_vectors` | `src/identify.rs` | `]J0` intentionally unsupported in codec transport mapping. |
+| GS1-7.2.2-01 | 7.2.2 | Full string starts with AIM symbology identifier | In | PASS | `conformance_scandata_process_vectors`, `conformance_clause_scandata_vectors` | `src/conformance.rs` | |
+| GS1-7.2.2-02 | 7.2.2 | Unknown/invalid symbology identifiers rejected | In | PASS | `conformance_scandata_process_vectors` | `src/conformance.rs` | |
+| GS1-7.2.6-01 | 7.2.6 | ITF-14 requires exactly 14 digits | In | PASS | `i1_rejects_wrong_length`, `i1_decode_rejects_non_itf14_payload` | `src/normalize.rs` | |
+| GS1-7.2.7-01 | 7.2.7 | ITF-14 check digit validated for `]I1` path | In | PASS | `i1_rejects_bad_check_digit` | `src/normalize.rs` | |
+| GS1-7.2.7-02 | 7.2.7 | EAN/UPC check digit validated in scan processing | In | PASS | `conformance_scandata_process_vectors` | `src/conformance.rs` | |
+| GS1-7.2.8-01 | 7.2.8 | Element strings moved to internal message field form | In | PASS | `conformance_scandata_process_vectors` | `src/conformance.rs` | |
+| GS1-7.3-01 | 7.3 | Required AI associations enforced | In | PASS | `validates_required_ai_associations`, `encode_rejects_missing_required_association`, `decode_rejects_missing_required_association` | `src/ai.rs` | |
+| GS1-7.3-02 | 7.3 | Exclusive AI associations enforced | In | PASS | `validates_exclusive_ai_associations` | `src/ai.rs` | |
+| GS1-7.4-01 | 7.4 | AI-level value validity (charset/length/date/time/check) | In | PARTIAL | `conformance_parse_ai_vectors`, `validates_ai_*`, `validates_mod10_for_gtin_and_gln` | `src/ai.rs` | Broader user-rule coverage still being expanded clause-by-clause. |
+| GS1-7.8.1-01 | 7.8.1 | Multiple GS1 element strings parsed in one carrier payload | In | PASS | `parses_variable_ai_with_fnc1_separator`, `conformance_scandata_process_vectors` | `src/parser/gs1.rs`, `src/conformance.rs` | |
+| GS1-7.8.2-01 | 7.8.2 | AI tokens recognized as numeric 2–4 length dictionary keys | In | PASS | `conformance_parse_ai_vectors`, `rejects_unknown_ai` | `src/parser/gs1.rs` | |
+| GS1-7.8.3-01 | 7.8.3 | Predefined-length elements can chain without separator | In | PASS | `predefined_fixed_ai_can_chain_without_separator` | `src/parser/gs1.rs` | |
+| GS1-7.8.3-02 | 7.8.3 | Non-predefined element followed by next requires separator | In | PASS | `non_predefined_fixed_ai_requires_separator_when_followed_by_more_data` | `src/parser/gs1.rs` | |
+| GS1-7.8.3-03 | 7.8.3 | Last element SHOULD NOT end with separator | In | PARTIAL | `allows_single_trailing_fnc1_separator` | `src/parser/gs1.rs` | Tolerates single trailing separator per 7.8.6.3 behavior. |
+| GS1-7.8.4-01 | 7.8.4 | GS1-128 separator handling | In | PASS | `carrier_separator_legality_matrix` (`]C1` cases) | `src/conformance.rs`, `src/parser/gs1.rs` | |
+| GS1-7.8.4-02 | 7.8.4 | GS1 DataMatrix and DotCode separator handling | In | PASS | `carrier_separator_legality_matrix` (`]d2`, `]J1` cases) | `src/conformance.rs`, `src/parser/gs1.rs` | |
+| GS1-7.8.4-03 | 7.8.4 | GS1 QR separator handling (`<GS>` and `%`) | In | PASS | `q3_percent_and_gs_separator_are_semantically_equivalent`, `q3_maps_percent_to_fnc1_when_no_gs_present` | `src/normalize.rs`, `src/conformance.rs` | |
+| GS1-7.8.4-04 | 7.8.4 | Decoded separator represented as `<GS>` (`0x1D`) in data string | In | PASS | `conformance_scandata_process_vectors`, `conformance_clause_scandata_vectors` | `src/conformance.rs` | |
+| GS1-7.8.5-01 | 7.8.5 | Basic GS1 barcode structure processed by symbology path | In | PASS | `conformance_scandata_process_vectors` | `src/identify.rs`, `src/conformance.rs` | |
+| GS1-7.8.6.1-01 | 7.8.6.1 | Concatenation with predefined-length elements | In | PASS | `predefined_fixed_ai_can_chain_without_separator`, `clause_mixed_predefined_and_variable_ordering_cases` | `src/parser/gs1.rs` | |
+| GS1-7.8.6.2-01 | 7.8.6.2 | Non-predefined followed by another element uses separator | In | PASS | `clause_mixed_predefined_and_variable_ordering_cases` | `src/parser/gs1.rs` | |
+| GS1-7.8.6.2-02 | 7.8.6.2 | Non-predefined as last element omits separator | In | PASS | `parses_variable_ai_with_fnc1_separator` (single-element and trailing behavior in suite) | `src/parser/gs1.rs` | |
+| GS1-7.8.6.3-01 | 7.8.6.3 | Processing tolerates single trailing separator | In | PASS | `allows_single_trailing_fnc1_separator` | `src/parser/gs1.rs` | |
+| GS1-7.8.6.3-02 | 7.8.6.3 | Double separator / empty field rejected in parser | In | PASS | `fnc1_double_separator_is_rejected`, `clause_mixed_predefined_and_variable_ordering_cases` | `src/parser/gs1.rs` | |
+| GS1-7.8.6.3-03 | 7.8.6.3 | Variable→fixed without separator ambiguity policy explicit | In | PARTIAL | `policy_variable_then_fixed_without_separator_is_single_variable_element` | `src/parser/gs1.rs` | Current policy is deterministic but may differ from some stricter interpretations. |
+| GS1-7.9.1-01 | 7.9.1 | Standard mod10 check digit calculations for GS1 IDs | In | PASS | `validates_mod10_for_gtin_and_gln`, `check_digit_vectors` | `src/ai.rs`, `src/check.rs` | |
+| GS1-7.9.3-01 | 7.9.3 | Four-digit price-field check digit calculation | In | PASS | `price_or_weight_check_digit_vectors` | `src/check.rs` | |
+| GS1-7.9.4-01 | 7.9.4 | Five-digit price-field check digit calculation | In | PASS | `price_or_weight_check_digit_vectors` | `src/check.rs` | |
+| GS1-7.9.5-01 | 7.9.5 | Alphanumeric check-character pair calculation | In | PASS | `check_character_pair_vectors` | `src/check.rs` | |
+| GS1-DL-ENC-001 | GS1 Digital Link Std | GS1 Digital Link encode from canonical payload | In | GAP | N/A | `src/encode.rs` | Not implemented. |
 
 ### Update Protocol
 
