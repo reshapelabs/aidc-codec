@@ -20,9 +20,16 @@ Generated files:
 - `ai_parse.jsonl`
 - `scandata_process.jsonl`
 - `dl_parse.jsonl`
+- `EXTRACTION_REPORT.json`
 
 Regeneration:
 
 - `python3 crates/aidc-gs1/tests/fixtures/extract_reference_fixtures.py`
+- or `mise run gs1-fixtures-refresh`
+
+Sync/completeness check:
+
+- `python3 crates/aidc-gs1/tests/fixtures/extract_reference_fixtures.py --check`
+- or `mise run gs1-fixtures-check`
 
 The extractor expects a local checkout at `./gs1-reference` (repo root).

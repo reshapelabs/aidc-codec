@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+
+      - name: Clippy
+        run: mise exec -- cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Tests
+        run: mise exec -- cargo nextest run --workspace --all-features
+
+      - name: Fixture Sync Check
+        run: mise run gs1-fixtures-check
+
+  gs1-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+
+      - name: Build shared library
+        run: make -C gs1-reference/src/c-lib libshared
+
+      - name: Run upstream C tests
+        run: mise run gs1-reference-test
+
+      - name: Differential parity
+        run: mise run gs1-diff

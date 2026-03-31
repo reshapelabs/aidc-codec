@@ -1,0 +1,18 @@
+{
+  "upstream_repo": "https://github.com/gs1/gs1-syntax-engine",
+  "source_files": {
+    "ai": "src/c-lib/ai.c",
+    "scandata": "src/c-lib/scandata.c",
+    "dl": "src/c-lib/dl.c"
+  },
+  "counts": {
+    "ai_parse": 22,
+    "scandata_process": 51,
+    "dl_parse": 80
+  },
+  "known_ids": {
+    "ai_parse_input": "(01)12345678901231",
+    "scandata_sample": "]d2011231231231233310ABC123\\u001d99TESTING",
+    "dl_parse_input": "https://a/01/12312312312333"
+  }
+}

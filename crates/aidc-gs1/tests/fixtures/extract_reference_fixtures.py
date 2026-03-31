@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+import argparse
 import json
 import pathlib
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[4]
 REF = ROOT / "gs1-reference"
@@ -143,8 +145,22 @@ def write_jsonl(name: str, rows):
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
-def main():
+def read_jsonl(name: str):
+    p = OUT / name
+    rows = []
+    with p.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    return rows
+
+
+def extract_all():
     ai_src = (REF / "src/c-lib/ai.c").read_text()
+    sc_src = (REF / "src/c-lib/scandata.c").read_text()
+    dl_src = (REF / "src/c-lib/dl.c").read_text()
+
     ai_rows = []
     for call in extract_calls(ai_src, "test_parseAIdata"):
         args = split_args(call)
@@ -160,7 +176,6 @@ def main():
             }
         )
 
-    sc_src = (REF / "src/c-lib/scandata.c").read_text()
     sc_rows = []
     for call in extract_calls(sc_src, "test_testProcessScanData"):
         args = split_args(call)
@@ -177,9 +192,6 @@ def main():
             }
         )
 
-    write_jsonl("ai_parse.jsonl", ai_rows)
-    write_jsonl("scandata_process.jsonl", sc_rows)
-    dl_src = (REF / "src/c-lib/dl.c").read_text()
     dl_calls = extract_calls(dl_src, "test_parseDLuri")
     dl_rows = []
     cursor = 0
@@ -224,12 +236,86 @@ def main():
                 "validate_unknown_ai_not_dl_attr": validate_unknown_ai_not_dl_attr,
             }
         )
-    write_jsonl("dl_parse.jsonl", dl_rows)
 
-    print(f"wrote ai_parse.jsonl rows={len(ai_rows)}")
-    print(f"wrote scandata_process.jsonl rows={len(sc_rows)}")
-    print(f"wrote dl_parse.jsonl rows={len(dl_rows)}")
+    return {
+        "ai_parse": ai_rows,
+        "scandata_process": sc_rows,
+        "dl_parse": dl_rows,
+    }
+
+
+def write_report(rows_by_name):
+    report = {
+        "upstream_repo": "https://github.com/gs1/gs1-syntax-engine",
+        "source_files": {
+            "ai": "src/c-lib/ai.c",
+            "scandata": "src/c-lib/scandata.c",
+            "dl": "src/c-lib/dl.c",
+        },
+        "counts": {
+            "ai_parse": len(rows_by_name["ai_parse"]),
+            "scandata_process": len(rows_by_name["scandata_process"]),
+            "dl_parse": len(rows_by_name["dl_parse"]),
+        },
+        "known_ids": {
+            "ai_parse_input": "(01)12345678901231",
+            "scandata_sample": "]d2011231231231233310ABC123\\u001d99TESTING",
+            "dl_parse_input": "https://a/01/12312312312333",
+        },
+    }
+    p = OUT / "EXTRACTION_REPORT.json"
+    p.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+
+
+def check_existing(rows_by_name):
+    expected = {
+        "ai_parse": read_jsonl("ai_parse.jsonl"),
+        "scandata_process": read_jsonl("scandata_process.jsonl"),
+        "dl_parse": read_jsonl("dl_parse.jsonl"),
+    }
+    ok = True
+    for name in ("ai_parse", "scandata_process", "dl_parse"):
+        if rows_by_name[name] != expected[name]:
+            print(
+                f"fixture mismatch in {name}.jsonl: extracted={len(rows_by_name[name])} existing={len(expected[name])}",
+                file=sys.stderr,
+            )
+            ok = False
+    return ok
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="verify committed fixture JSONL files match extracted upstream calls",
+    )
+    args = parser.parse_args()
+
+    rows_by_name = extract_all()
+    if args.check:
+        if not check_existing(rows_by_name):
+            return 1
+        print(
+            "fixtures are in sync: "
+            f"ai_parse={len(rows_by_name['ai_parse'])}, "
+            f"scandata_process={len(rows_by_name['scandata_process'])}, "
+            f"dl_parse={len(rows_by_name['dl_parse'])}"
+        )
+        return 0
+
+    write_jsonl("ai_parse.jsonl", rows_by_name["ai_parse"])
+    write_jsonl("scandata_process.jsonl", rows_by_name["scandata_process"])
+    write_jsonl("dl_parse.jsonl", rows_by_name["dl_parse"])
+    write_report(rows_by_name)
+
+    print(f"wrote ai_parse.jsonl rows={len(rows_by_name['ai_parse'])}")
+    print(f"wrote scandata_process.jsonl rows={len(rows_by_name['scandata_process'])}")
+    print(f"wrote dl_parse.jsonl rows={len(rows_by_name['dl_parse'])}")
+    print("wrote EXTRACTION_REPORT.json")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

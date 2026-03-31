@@ -49,6 +49,27 @@ struct DictionaryLock {
     fetched_at_utc: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct ExtractionReport {
+    upstream_repo: String,
+    counts: ExtractionCounts,
+    known_ids: ExtractionKnownIds,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ExtractionCounts {
+    ai_parse: usize,
+    scandata_process: usize,
+    dl_parse: usize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ExtractionKnownIds {
+    ai_parse_input: String,
+    scandata_sample: String,
+    dl_parse_input: String,
+}
+
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
 }
@@ -86,6 +107,13 @@ fn load_clause_scandata_process_cases() -> Vec<ClauseScanDataProcessCase> {
 fn load_dictionary_lock() -> DictionaryLock {
     let path =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data/gs1-syntax-dictionary.lock.json");
+    let raw = fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
+    serde_json::from_str(&raw).unwrap_or_else(|e| panic!("failed to parse {}: {e}", path.display()))
+}
+
+fn load_extraction_report() -> ExtractionReport {
+    let path = fixtures_dir().join("EXTRACTION_REPORT.json");
     let raw = fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
     serde_json::from_str(&raw).unwrap_or_else(|e| panic!("failed to parse {}: {e}", path.display()))
@@ -175,6 +203,41 @@ fn fixtures_sanity_dictionary_lock() {
     assert_eq!(lock.source_sha256.len(), 64);
     assert!(lock.source_sha256.chars().all(|c| c.is_ascii_hexdigit()));
     assert!(lock.fetched_at_utc.ends_with('Z'));
+}
+
+#[test]
+fn fixtures_sanity_extraction_report_matches_fixture_sets() {
+    let report = load_extraction_report();
+    let ai = load_parse_ai_cases();
+    let sc = load_scandata_process_cases();
+    let dl = load_dl_parse_cases();
+
+    assert_eq!(
+        report.upstream_repo,
+        "https://github.com/gs1/gs1-syntax-engine"
+    );
+    assert_eq!(report.counts.ai_parse, ai.len());
+    assert_eq!(report.counts.scandata_process, sc.len());
+    assert_eq!(report.counts.dl_parse, dl.len());
+
+    assert!(
+        ai.iter()
+            .any(|c| c.input == report.known_ids.ai_parse_input),
+        "known ai_parse input missing from fixtures"
+    );
+    let scandata_sample = report
+        .known_ids
+        .scandata_sample
+        .replace("\\u001d", "\u{001d}");
+    assert!(
+        sc.iter().any(|c| c.scan_data == scandata_sample),
+        "known scandata sample missing from fixtures"
+    );
+    assert!(
+        dl.iter()
+            .any(|c| c.input == report.known_ids.dl_parse_input),
+        "known dl_parse input missing from fixtures"
+    );
 }
 
 #[test]

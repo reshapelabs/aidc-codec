@@ -6,7 +6,13 @@ rust = "stable"
 description = "Run GS1 differential test against local reference C library"
 run = '''
 if [ -z "${AIDC_GS1_REF_LIB:-}" ]; then
-  AIDC_GS1_REF_LIB="$PWD/gs1-reference/src/c-lib/build/libgs1encoders.dylib"
+  for ext in dylib so dll; do
+    candidate="$PWD/gs1-reference/src/c-lib/build/libgs1encoders.$ext"
+    if [ -f "$candidate" ]; then
+      AIDC_GS1_REF_LIB="$candidate"
+      break
+    fi
+  done
 fi
 
 if [ ! -f "$AIDC_GS1_REF_LIB" ]; then
@@ -24,7 +30,13 @@ cargo nextest run -p aidc-gs1 --all-features differential_scandata_matches_refer
 description = "Run GS1 differential proptest fuzzing against local reference C library"
 run = '''
 if [ -z "${AIDC_GS1_REF_LIB:-}" ]; then
-  AIDC_GS1_REF_LIB="$PWD/gs1-reference/src/c-lib/build/libgs1encoders.dylib"
+  for ext in dylib so dll; do
+    candidate="$PWD/gs1-reference/src/c-lib/build/libgs1encoders.$ext"
+    if [ -f "$candidate" ]; then
+      AIDC_GS1_REF_LIB="$candidate"
+      break
+    fi
+  done
 fi
 
 if [ ! -f "$AIDC_GS1_REF_LIB" ]; then
@@ -38,4 +50,22 @@ export AIDC_GS1_DIFF_PROPTEST=1
 export AIDC_GS1_DIFF_PROPTEST_CASES="${AIDC_GS1_DIFF_PROPTEST_CASES:-512}"
 export AIDC_GS1_DIFF_STRICT_SEMANTIC="${AIDC_GS1_DIFF_STRICT_SEMANTIC:-1}"
 cargo nextest run -p aidc-gs1 --all-features differential_scandata_fuzz_matches_reference
+'''
+
+[tasks.gs1-fixtures-refresh]
+description = "Regenerate GS1 fixture JSONL files and extraction report from gs1-reference C tests"
+run = '''
+python3 crates/aidc-gs1/tests/fixtures/extract_reference_fixtures.py
+'''
+
+[tasks.gs1-fixtures-check]
+description = "Verify committed GS1 fixtures match gs1-reference extraction exactly"
+run = '''
+python3 crates/aidc-gs1/tests/fixtures/extract_reference_fixtures.py --check
+'''
+
+[tasks.gs1-reference-test]
+description = "Run upstream gs1-reference C-library test suite"
+run = '''
+make -C gs1-reference/src/c-lib test
 '''
