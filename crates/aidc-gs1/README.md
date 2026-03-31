@@ -43,7 +43,7 @@ This crate tracks GS1 conformance using a requirement matrix.
 | GS1-7.8.2-01 | 7.8.2 | AI tokens recognized as numeric 2–4 length dictionary keys | In | PASS | `conformance_parse_ai_vectors`, `rejects_unknown_ai` | `src/parser/gs1.rs` | |
 | GS1-7.8.3-01 | 7.8.3 | Predefined-length elements can chain without separator | In | PASS | `predefined_fixed_ai_can_chain_without_separator` | `src/parser/gs1.rs` | |
 | GS1-7.8.3-02 | 7.8.3 | Non-predefined element followed by next requires separator | In | PASS | `non_predefined_fixed_ai_requires_separator_when_followed_by_more_data` | `src/parser/gs1.rs` | |
-| GS1-7.8.3-03 | 7.8.3 | Last element SHOULD NOT end with separator | In | PARTIAL | `allows_single_trailing_fnc1_separator` | `src/parser/gs1.rs` | Tolerates single trailing separator per 7.8.6.3 behavior. |
+| GS1-7.8.3-03 | 7.8.3 | Last element does not end with separator (strict parser rejects trailing separator) | In | PASS | `rejects_single_trailing_fnc1_separator` | `src/parser/gs1.rs` | |
 | GS1-7.8.4-01 | 7.8.4 | GS1-128 separator handling | In | PASS | `carrier_separator_legality_matrix` (`]C1` cases) | `src/conformance.rs`, `src/parser/gs1.rs` | |
 | GS1-7.8.4-02 | 7.8.4 | GS1 DataMatrix and DotCode separator handling | In | PASS | `carrier_separator_legality_matrix` (`]d2`, `]J1` cases) | `src/conformance.rs`, `src/parser/gs1.rs` | |
 | GS1-7.8.4-03 | 7.8.4 | GS1 QR separator handling (`<GS>` and `%`) | In | PASS | `q3_percent_and_gs_separator_are_semantically_equivalent`, `q3_maps_percent_to_fnc1_when_no_gs_present` | `src/normalize.rs`, `src/conformance.rs` | |
@@ -51,10 +51,10 @@ This crate tracks GS1 conformance using a requirement matrix.
 | GS1-7.8.5-01 | 7.8.5 | Basic GS1 barcode structure processed by symbology path | In | PASS | `conformance_scandata_process_vectors` | `src/identify.rs`, `src/conformance.rs` | |
 | GS1-7.8.6.1-01 | 7.8.6.1 | Concatenation with predefined-length elements | In | PASS | `predefined_fixed_ai_can_chain_without_separator`, `clause_mixed_predefined_and_variable_ordering_cases` | `src/parser/gs1.rs` | |
 | GS1-7.8.6.2-01 | 7.8.6.2 | Non-predefined followed by another element uses separator | In | PASS | `clause_mixed_predefined_and_variable_ordering_cases` | `src/parser/gs1.rs` | |
-| GS1-7.8.6.2-02 | 7.8.6.2 | Non-predefined as last element omits separator | In | PASS | `parses_variable_ai_with_fnc1_separator` (single-element and trailing behavior in suite) | `src/parser/gs1.rs` | |
-| GS1-7.8.6.3-01 | 7.8.6.3 | Processing tolerates single trailing separator | In | PASS | `allows_single_trailing_fnc1_separator` | `src/parser/gs1.rs` | |
+| GS1-7.8.6.2-02 | 7.8.6.2 | Non-predefined as last element omits separator | In | PASS | `parses_variable_ai_with_fnc1_separator` | `src/parser/gs1.rs` | |
+| GS1-7.8.6.3-01 | 7.8.6.3 | Trailing separator is rejected in strict parser mode | In | PASS | `rejects_single_trailing_fnc1_separator` | `src/parser/gs1.rs` | |
 | GS1-7.8.6.3-02 | 7.8.6.3 | Double separator / empty field rejected in parser | In | PASS | `fnc1_double_separator_is_rejected`, `clause_mixed_predefined_and_variable_ordering_cases` | `src/parser/gs1.rs` | |
-| GS1-7.8.6.3-03 | 7.8.6.3 | Variable→fixed without separator ambiguity policy explicit | In | PARTIAL | `policy_variable_then_fixed_without_separator_is_single_variable_element` | `src/parser/gs1.rs` | Current policy is deterministic but may differ from some stricter interpretations. |
+| GS1-7.8.6.3-03 | 7.8.6.3 | Variable→fixed without separator is rejected as missing required separator | In | PASS | `rejects_variable_then_fixed_without_separator`, `clause_mixed_predefined_and_variable_ordering_cases` | `src/parser/gs1.rs` | |
 | GS1-7.9.1-01 | 7.9.1 | Standard mod10 check digit calculations for GS1 IDs | In | PASS | `validates_mod10_for_gtin_and_gln`, `check_digit_vectors` | `src/ai.rs`, `src/check.rs` | |
 | GS1-7.9.3-01 | 7.9.3 | Four-digit price-field check digit calculation | In | PASS | `price_or_weight_check_digit_vectors` | `src/check.rs` | |
 | GS1-7.9.4-01 | 7.9.4 | Five-digit price-field check digit calculation | In | PASS | `price_or_weight_check_digit_vectors` | `src/check.rs` | |

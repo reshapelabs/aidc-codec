@@ -72,11 +72,8 @@ fn parse_ai_elements(input: &[u8]) -> Result<Vec<AiElement>, AidcError> {
 
     let mut out = Vec::new();
     let fields = text.split('\u{001d}').collect::<Vec<_>>();
-    for (idx, field) in fields.iter().enumerate() {
+    for field in &fields {
         if field.is_empty() {
-            if idx + 1 == fields.len() && idx > 0 {
-                continue;
-            }
             return Err(AidcError::InvalidPayload(
                 "empty FNC1-delimited field".to_owned(),
             ));
@@ -119,6 +116,11 @@ fn parse_field(mut field: &str, out: &mut Vec<AiElement>) -> Result<(), AidcErro
                 "empty variable-length AI value".to_owned(),
             ));
         }
+        if has_ambiguous_following_element(&ai, body) {
+            return Err(AidcError::InvalidPayload(
+                "FNC1 separator required after AI".to_owned(),
+            ));
+        }
         validate_ai_value(&ai, body)?;
         out.push(AiElement {
             ai: Gs1Ai::parse(&ai),
@@ -127,6 +129,26 @@ fn parse_field(mut field: &str, out: &mut Vec<AiElement>) -> Result<(), AidcErro
         field = "";
     }
     Ok(())
+}
+
+fn has_ambiguous_following_element(ai: &str, body: &str) -> bool {
+    for (idx, _) in body.char_indices().skip(1) {
+        let prefix = &body[..idx];
+        if validate_ai_value(ai, prefix).is_err() {
+            continue;
+        }
+
+        let suffix = &body[idx..];
+        if parse_ai(suffix).is_none() {
+            continue;
+        }
+
+        let mut parsed_suffix = Vec::new();
+        if parse_field(suffix, &mut parsed_suffix).is_ok() && !parsed_suffix.is_empty() {
+            return true;
+        }
+    }
+    false
 }
 
 #[cfg(feature = "gs1-dl")]
@@ -194,10 +216,9 @@ mod tests {
     }
 
     #[test]
-    fn allows_single_trailing_fnc1_separator() {
-        let elements = parse_ai_elements(b"0109520123456788\x1d").expect("parse should succeed");
-        assert_eq!(elements.len(), 1);
-        assert_eq!(elements[0].ai.code(), "01");
+    fn rejects_single_trailing_fnc1_separator() {
+        let err = parse_ai_elements(b"0109520123456788\x1d").expect_err("parse should fail");
+        assert!(err.to_string().contains("empty FNC1-delimited field"));
     }
 
     #[test]
@@ -217,11 +238,9 @@ mod tests {
     }
 
     #[test]
-    fn policy_variable_then_fixed_without_separator_is_single_variable_element() {
-        let elements = parse_ai_elements(b"10BATCH4217010101").expect("parse should succeed");
-        assert_eq!(elements.len(), 1);
-        assert_eq!(elements[0].ai.code(), "10");
-        assert_eq!(elements[0].value, "BATCH4217010101");
+    fn rejects_variable_then_fixed_without_separator() {
+        let err = parse_ai_elements(b"10BATCH4217010101").expect_err("parse should fail");
+        assert!(err.to_string().contains("FNC1 separator required after AI"));
     }
 
     #[test]
@@ -247,10 +266,10 @@ mod tests {
                 expected_err: None,
             },
             Case {
-                name: "variable_then_predefined_without_separator_is_ambiguous",
+                name: "variable_then_predefined_without_separator_rejected",
                 raw: b"10BATCH4217010101",
-                expected_elements: 1,
-                expected_err: None,
+                expected_elements: 0,
+                expected_err: Some("FNC1 separator required after AI"),
             },
             Case {
                 name: "variable_then_predefined_with_separator",
@@ -259,10 +278,10 @@ mod tests {
                 expected_err: None,
             },
             Case {
-                name: "single_trailing_separator_tolerated",
+                name: "single_trailing_separator_rejected",
                 raw: b"1701010110BATCH42\x1d",
-                expected_elements: 2,
-                expected_err: None,
+                expected_elements: 0,
+                expected_err: Some("empty FNC1-delimited field"),
             },
             Case {
                 name: "double_separator_rejected",
