@@ -607,4 +607,53 @@ mod tests {
         .expect("parse should succeed");
         assert_eq!(internal, "^010952012345678810ABC123^99XYZ");
     }
+
+    #[test]
+    fn dl_unknown_numeric_query_ai_rejected_when_not_permitted() {
+        let err = parse_dl_uri(
+            "https://example.com/01/09520123456788?89=ABC123",
+            DlParseOptions::default(),
+        )
+        .expect_err("unknown numeric query AI should fail by default");
+        assert!(err
+            .to_string()
+            .contains("unknown numeric query AI is not permitted"));
+    }
+
+    #[test]
+    fn dl_unknown_numeric_query_ai_allowed_when_permitted() {
+        let internal = parse_dl_uri(
+            "https://example.com/01/09520123456788?89=ABC123",
+            DlParseOptions {
+                permit_unknown_ais: true,
+                validate_unknown_ai_not_dl_attr: false,
+                ..DlParseOptions::default()
+            },
+        )
+        .expect("unknown numeric query AI should parse when permitted");
+        assert_eq!(internal, "^010952012345678889ABC123");
+    }
+
+    #[test]
+    fn dl_convenience_alpha_key_rejected_when_option_disabled() {
+        let err = parse_dl_uri(
+            "https://example.com/gtin/12312312312333",
+            DlParseOptions::default(),
+        )
+        .expect_err("convenience alpha key should fail by default");
+        assert!(err.to_string().contains("no primary key AI in path"));
+    }
+
+    #[test]
+    fn dl_convenience_alpha_key_mapping_enabled_by_option() {
+        let internal = parse_dl_uri(
+            "https://example.com/gtin/12312312312333/ser/ABC123",
+            DlParseOptions {
+                permit_convenience_alphas: true,
+                ..DlParseOptions::default()
+            },
+        )
+        .expect("convenience alpha keys should map when enabled");
+        assert_eq!(internal, "^011231231231233321ABC123");
+    }
 }

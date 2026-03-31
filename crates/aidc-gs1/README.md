@@ -86,8 +86,8 @@ This crate tracks GS1 conformance using a requirement matrix.
 | GS1-DL-008 | GS1 Digital Link Std | Duplicate AI across path/query rejected | In | PASS | `dl_query_duplicate_ai_is_rejected`, `dl_query_path_duplicate_ai_is_rejected` | `src/conformance.rs` | |
 | GS1-DL-009 | GS1 Digital Link Std | Query AI ordering preserved in internal representation | In | PASS | `dl_query_order_is_preserved_in_internal_representation` | `src/conformance.rs` | |
 | GS1-DL-010 | GS1 Digital Link Std | Variable path fields followed by query insert separators correctly | In | PASS | `dl_path_then_query_variable_fields_insert_separator` | `src/conformance.rs` | |
-| GS1-DL-011 | GS1 Digital Link Std | Unknown numeric query AI policy is option-controlled | In | PARTIAL | `conformance_dl_parse_vectors` | `src/conformance.rs` | Covered by fixtures; dedicated unit tests per option branch still missing. |
-| GS1-DL-012 | GS1 Digital Link Std | Convenience alpha key mapping is option-controlled | In | PARTIAL | `conformance_dl_parse_vectors` | `src/conformance.rs` | Covered by fixtures; dedicated unit tests per mapping key still missing. |
+| GS1-DL-011 | GS1 Digital Link Std | Unknown numeric query AI policy is option-controlled | In | PASS | `conformance_dl_parse_vectors`, `dl_unknown_numeric_query_ai_rejected_when_not_permitted`, `dl_unknown_numeric_query_ai_allowed_when_permitted` | `src/conformance.rs` | |
+| GS1-DL-012 | GS1 Digital Link Std | Convenience alpha key mapping is option-controlled | In | PASS | `conformance_dl_parse_vectors`, `dl_convenience_alpha_key_rejected_when_option_disabled`, `dl_convenience_alpha_key_mapping_enabled_by_option` | `src/conformance.rs` | |
 | GS1-DL-013 | GS1 Digital Link Std | Zero-suppressed GTIN handling is option-controlled | In | PASS | `conformance_dl_parse_vectors` | `src/conformance.rs` | |
 | GS1-DL-014 | GS1 Digital Link Std | Parsed DL payload converts into typed AI element list | In | PASS | `parses_digital_link_into_ai_elements` | `src/parser/gs1.rs` | |
 | GS1-7.8-01 | 7.8 | Bracketed AI payloads parse into internal `^` representation | In | PASS | `conformance_parse_ai_vectors` | `src/conformance.rs` | |
