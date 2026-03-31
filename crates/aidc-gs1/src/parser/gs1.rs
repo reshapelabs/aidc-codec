@@ -79,7 +79,11 @@ pub fn parse_composite_packet(
     }
     let linear = linear.to_owned();
     let cc = cc.to_owned();
-    let cc_elements = parse_ai_elements(cc.as_bytes())?;
+    let mut cc_elements = parse_ai_elements(cc.as_bytes())?;
+    if let Some(primary) = primary_element_from_linear(&transport.symbology_id, &linear) {
+        cc_elements.insert(0, primary);
+    }
+    validate_message_rules(cc_elements.iter().map(|e| e.ai.code()))?;
 
     Ok(ParseResult {
         transport,
@@ -89,6 +93,20 @@ pub fn parse_composite_packet(
             cc_elements,
         },
     })
+}
+
+#[cfg(feature = "gs1-composite")]
+fn primary_element_from_linear(
+    symbology_id: &crate::model::SymbologyId,
+    linear: &str,
+) -> Option<AiElement> {
+    match symbology_id {
+        crate::model::SymbologyId::E0 | crate::model::SymbologyId::E4 => Some(AiElement {
+            ai: Gs1Ai::parse("01"),
+            value: format!("{linear:0>14}"),
+        }),
+        _ => None,
+    }
 }
 
 fn parse_ai_elements(input: &[u8]) -> Result<Vec<AiElement>, AidcError> {
@@ -407,7 +425,7 @@ mod tests {
     #[test]
     fn parses_composite_packet_with_valid_separator() {
         let transport = Transport {
-            symbology_id: SymbologyId::LowerE1,
+            symbology_id: SymbologyId::E0,
             carrier: CarrierFamily::Gs1Composite,
             kind: TransportKind::Gs1CompositePacket,
         };
@@ -422,9 +440,11 @@ mod tests {
             } => {
                 assert_eq!(original, b"2112345678900|]e00109520123456788");
                 assert_eq!(linear, "2112345678900");
-                assert_eq!(cc_elements.len(), 1);
+                assert_eq!(cc_elements.len(), 2);
                 assert_eq!(cc_elements[0].ai.code(), "01");
-                assert_eq!(cc_elements[0].value, "09520123456788");
+                assert_eq!(cc_elements[0].value, "02112345678900");
+                assert_eq!(cc_elements[1].ai.code(), "01");
+                assert_eq!(cc_elements[1].value, "09520123456788");
             }
             other => panic!("unexpected parsed payload: {other:?}"),
         }

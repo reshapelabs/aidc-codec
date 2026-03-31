@@ -482,11 +482,15 @@ fn ean13_composite_decode_parses_cc_ai_semantics() {
     assert_eq!(
         got,
         vec![
+            ("01".to_owned(), "02112345678900".to_owned()),
             ("99".to_owned(), "COMPOSITE".to_owned()),
             ("98".to_owned(), "XYZ".to_owned()),
         ]
     );
-    assert_eq!(decoded.to_hri().as_deref(), Some("(99)COMPOSITE(98)XYZ"));
+    assert_eq!(
+        decoded.to_hri().as_deref(),
+        Some("(01)02112345678900(99)COMPOSITE(98)XYZ")
+    );
 }
 
 #[test]
