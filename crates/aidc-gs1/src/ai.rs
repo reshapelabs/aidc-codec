@@ -490,6 +490,26 @@ mod tests {
     }
 
     #[test]
+    fn rejects_empty_ai_values() {
+        assert!(validate_ai_value("10", "").is_err());
+        assert!(validate_ai_value("9999", "").is_err());
+    }
+
+    #[test]
+    fn rejects_values_longer_than_90_chars() {
+        let too_long = "A".repeat(91);
+        assert!(validate_ai_value("10", &too_long).is_err());
+        assert!(validate_ai_value("9999", &too_long).is_err());
+    }
+
+    #[test]
+    fn validates_ai17_zero_day_and_date_bounds() {
+        assert!(validate_ai_value("17", "250200").is_ok());
+        assert!(validate_ai_value("17", "251332").is_err());
+        assert!(validate_ai_value("17", "250232").is_err());
+    }
+
+    #[test]
     fn validates_required_ai_associations() {
         assert!(validate_message_rules(["11", "01"]).is_ok());
         assert!(validate_message_rules(["11"]).is_err());

@@ -38,7 +38,7 @@ This crate tracks GS1 conformance using a requirement matrix.
 | GS1-7.2.8-01 | 7.2.8 | Element strings moved to internal message field form | In | PASS | `conformance_scandata_process_vectors` | `src/conformance.rs` | |
 | GS1-7.3-01 | 7.3 | Required AI associations enforced | In | PASS | `validates_required_ai_associations`, `encode_rejects_missing_required_association`, `decode_rejects_missing_required_association` | `src/ai.rs` | |
 | GS1-7.3-02 | 7.3 | Exclusive AI associations enforced | In | PASS | `validates_exclusive_ai_associations` | `src/ai.rs` | |
-| GS1-7.4-01 | 7.4 | AI-level value validity (charset/length/date/time/check) | In | PARTIAL | `conformance_parse_ai_vectors`, `validates_ai_*`, `validates_mod10_for_gtin_and_gln` | `src/ai.rs` | Broader user-rule coverage still being expanded clause-by-clause. |
+| GS1-7.4-01 | 7.4 | AI-level value validity (charset/length/date/time/check) | In | PASS | `conformance_parse_ai_vectors`, `validates_ai_*`, `validates_mod10_for_gtin_and_gln`, `rejects_empty_ai_values`, `rejects_values_longer_than_90_chars`, `validates_ai17_zero_day_and_date_bounds` | `src/ai.rs` | Roll-up row backed by detailed 7.4 sub-rows (`7.4-02..10`). |
 | GS1-7.8.1-01 | 7.8.1 | Multiple GS1 element strings parsed in one carrier payload | In | PASS | `parses_variable_ai_with_fnc1_separator`, `conformance_scandata_process_vectors` | `src/parser/gs1.rs`, `src/conformance.rs` | |
 | GS1-7.8.2-01 | 7.8.2 | AI tokens recognized as numeric 2–4 length dictionary keys | In | PASS | `conformance_parse_ai_vectors`, `rejects_unknown_ai` | `src/parser/gs1.rs` | |
 | GS1-7.8.3-01 | 7.8.3 | Predefined-length elements can chain without separator | In | PASS | `predefined_fixed_ai_can_chain_without_separator` | `src/parser/gs1.rs` | |
