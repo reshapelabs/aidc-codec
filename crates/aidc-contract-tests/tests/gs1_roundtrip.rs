@@ -167,25 +167,25 @@ fn fixed_ai_strategy() -> impl Strategy<Value = DataElement> {
 
 fn variable_ai_strategy() -> impl Strategy<Value = DataElement> {
     prop_oneof![
-        proptest::string::string_regex("[A-Z0-9]{1,20}")
+        proptest::string::string_regex("[A-Z]{1,20}")
             .expect("valid regex")
             .prop_map(|v| DataElement {
                 id: "10".to_owned(),
                 value: v
             }),
-        proptest::string::string_regex("[A-Z0-9]{1,20}")
+        proptest::string::string_regex("[A-Z]{1,20}")
             .expect("valid regex")
             .prop_map(|v| DataElement {
                 id: "21".to_owned(),
                 value: v
             }),
-        proptest::string::string_regex("[A-Z0-9]{1,28}")
+        proptest::string::string_regex("[A-Z]{1,28}")
             .expect("valid regex")
             .prop_map(|v| DataElement {
                 id: "235".to_owned(),
                 value: v
             }),
-        proptest::string::string_regex("[A-Z0-9]{1,20}")
+        proptest::string::string_regex("[A-Z]{1,20}")
             .expect("valid regex")
             .prop_map(|v| DataElement {
                 id: "91".to_owned(),

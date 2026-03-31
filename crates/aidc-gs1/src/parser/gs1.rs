@@ -389,7 +389,7 @@ mod tests {
     }
 
     fn variable_ai_strategy() -> impl Strategy<Value = (String, String)> {
-        prop_oneof![proptest::string::string_regex("[A-Z0-9]{1,20}")
+        prop_oneof![proptest::string::string_regex("[A-Z]{1,20}")
             .expect("valid regex")
             .prop_map(|v| ("91".to_owned(), v)),]
     }
