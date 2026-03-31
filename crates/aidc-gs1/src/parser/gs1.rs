@@ -81,6 +81,7 @@ pub fn parse_composite_packet(
     let cc = cc.to_owned();
     let mut cc_elements = parse_ai_elements(cc.as_bytes())?;
     if let Some(primary) = primary_element_from_linear(&transport.symbology_id, &linear) {
+        validate_ai_value(primary.ai.code(), &primary.value)?;
         cc_elements.insert(0, primary);
     }
     validate_message_rules(cc_elements.iter().map(|e| e.ai.code()))?;
@@ -479,6 +480,48 @@ mod tests {
         assert!(err
             .to_string()
             .contains("composite packet CC component must not be empty"));
+    }
+
+    #[cfg(feature = "gs1-composite")]
+    #[test]
+    fn ean8_composite_injects_primary_ai01() {
+        let transport = Transport {
+            symbology_id: SymbologyId::E4,
+            carrier: CarrierFamily::Gs1Composite,
+            kind: TransportKind::Gs1CompositePacket,
+        };
+        let parsed = super::parse_composite_packet(transport, b"02345673|]e099ABC".to_vec())
+            .expect("parse should succeed");
+        match parsed.parsed {
+            ParsedPayload::CompositePacket { cc_elements, .. } => {
+                assert_eq!(cc_elements.len(), 2);
+                assert_eq!(cc_elements[0].ai.code(), "01");
+                assert_eq!(cc_elements[0].value, "00000002345673");
+                assert_eq!(cc_elements[1].ai.code(), "99");
+                assert_eq!(cc_elements[1].value, "ABC");
+            }
+            other => panic!("unexpected parsed payload: {other:?}"),
+        }
+    }
+
+    #[cfg(feature = "gs1-composite")]
+    #[test]
+    fn non_ean_composite_does_not_inject_primary_ai01() {
+        let transport = Transport {
+            symbology_id: SymbologyId::LowerE1,
+            carrier: CarrierFamily::Gs1Composite,
+            kind: TransportKind::Gs1CompositePacket,
+        };
+        let parsed = super::parse_composite_packet(transport, b"2112345678900|]e099ABC".to_vec())
+            .expect("parse should succeed");
+        match parsed.parsed {
+            ParsedPayload::CompositePacket { cc_elements, .. } => {
+                assert_eq!(cc_elements.len(), 1);
+                assert_eq!(cc_elements[0].ai.code(), "99");
+                assert_eq!(cc_elements[0].value, "ABC");
+            }
+            other => panic!("unexpected parsed payload: {other:?}"),
+        }
     }
 
     fn fixed_ai_strategy() -> impl Strategy<Value = (String, String)> {
