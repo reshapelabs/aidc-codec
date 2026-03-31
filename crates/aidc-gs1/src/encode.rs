@@ -205,7 +205,7 @@ fn matches_ai_pattern(ai: &str, pattern: &str) -> bool {
 mod tests {
     use super::encode_payload;
     use crate::model::TransportKind;
-    use aidc_core::{CanonicalPayload, DataElement};
+    use aidc_core::{AidcError, CanonicalPayload, DataElement};
 
     #[test]
     fn dl_encode_builds_canonical_uri_with_qualifiers_and_sorted_query() {
@@ -276,5 +276,43 @@ mod tests {
         assert!(err
             .to_string()
             .contains("is not valid as a query data attribute"));
+    }
+
+    #[test]
+    fn composite_encode_is_not_implemented() {
+        let err = encode_payload(
+            TransportKind::Gs1CompositePacket,
+            CanonicalPayload::Elements(vec![DataElement {
+                id: "01".to_owned(),
+                value: "09520123456788".to_owned(),
+            }]),
+        )
+        .expect_err("encode should fail");
+        assert!(matches!(err, AidcError::UnsupportedTransportKind(_)));
+    }
+
+    #[test]
+    fn dl_encode_rejects_repeated_ai_keys() {
+        let err = encode_payload(
+            TransportKind::Gs1DigitalLinkUri,
+            CanonicalPayload::Elements(vec![
+                DataElement {
+                    id: "01".to_owned(),
+                    value: "09520123456788".to_owned(),
+                },
+                DataElement {
+                    id: "99".to_owned(),
+                    value: "AAA".to_owned(),
+                },
+                DataElement {
+                    id: "99".to_owned(),
+                    value: "BBB".to_owned(),
+                },
+            ]),
+        )
+        .expect_err("encode should fail");
+        assert!(err
+            .to_string()
+            .contains("digital-link encode does not allow repeated AI keys"));
     }
 }

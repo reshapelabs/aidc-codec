@@ -26,7 +26,7 @@ This crate tracks GS1 conformance using a requirement matrix.
 - `GAP`: not implemented or not sufficiently tested
 - `N/A`: out of scope (with rationale)
 
-### Requirement Matrix (First 60 Entries)
+### Requirement Matrix (First 66 Entries)
 
 | Requirement ID | GS1 Clause | Requirement Summary | Scope | Status | Evidence (tests/fixtures) | Implementation (file) | Notes |
 |---|---|---|---|---|---|---|---|
@@ -92,6 +92,12 @@ This crate tracks GS1 conformance using a requirement matrix.
 | GS1-DL-014 | GS1 Digital Link Std | Parsed DL payload converts into typed AI element list | In | PASS | `parses_digital_link_into_ai_elements` | `src/parser/gs1.rs` | |
 | GS1-7.8-01 | 7.8 | Bracketed AI payloads parse into internal `^` representation | In | PASS | `conformance_parse_ai_vectors` | `src/conformance.rs` | |
 | GS1-7.8-02 | 7.8 | Escaped literal `(` is preserved in bracketed AI values | In | PASS | `conformance_parse_ai_vectors` | `src/conformance.rs` | |
+| GS1-CMP-001 | Composite Transfer | Composite packet requires `|]e0` separator between linear and CC components | In | PASS | `parses_composite_packet_with_valid_separator`, `rejects_composite_packet_without_separator` | `src/parser/gs1.rs` | |
+| GS1-CMP-002 | Composite Transfer | Composite packet rejects empty linear or CC component | In | PASS | `rejects_composite_packet_with_empty_cc_component` | `src/parser/gs1.rs` | |
+| GS1-CMP-003 | Composite Transfer | Composite packet parsing yields structured AI element semantics | In | GAP | N/A | `src/parser/gs1.rs` | Current implementation validates structure and preserves raw packet only. |
+| GS1-CMP-ENC-001 | Composite Transfer | Composite packet encode from canonical payload | In | GAP | `composite_encode_is_not_implemented` | `src/encode.rs` | Encode path intentionally unimplemented pending canonical composite model. |
+| GS1-DL-015 | GS1 Digital Link Std | DL encode semantic parity with GS1 C reference parser | In | PASS | `differential_dl_encode_semantics_matches_reference` | `tests/differential_ref.rs` | |
+| GS1-DL-016 | GS1 Digital Link Std | DL encode rejects repeated AI keys | In | PASS | `dl_encode_rejects_repeated_ai_keys` | `src/encode.rs` | |
 
 ### Update Protocol
 

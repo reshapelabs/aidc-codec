@@ -54,6 +54,30 @@ pub fn parse_composite_packet(
     transport: Transport,
     normalized: Vec<u8>,
 ) -> Result<ParseResult, AidcError> {
+    let text = std::str::from_utf8(&normalized).map_err(|_| {
+        AidcError::InvalidPayload("GS1 composite packet must be valid UTF-8".to_owned())
+    })?;
+    let Some((linear, cc)) = text.split_once("|]e0") else {
+        return Err(AidcError::InvalidPayload(
+            "composite packet must contain '|]e0' separator".to_owned(),
+        ));
+    };
+    if linear.is_empty() {
+        return Err(AidcError::InvalidPayload(
+            "composite packet linear component must not be empty".to_owned(),
+        ));
+    }
+    if cc.is_empty() {
+        return Err(AidcError::InvalidPayload(
+            "composite packet CC component must not be empty".to_owned(),
+        ));
+    }
+    if cc.contains("|]e0") {
+        return Err(AidcError::InvalidPayload(
+            "composite packet must contain only one '|]e0' separator".to_owned(),
+        ));
+    }
+
     Ok(ParseResult {
         transport,
         parsed: ParsedPayload::CompositePacket(normalized),
@@ -371,6 +395,56 @@ mod tests {
             }
             other => panic!("unexpected parsed payload: {other:?}"),
         }
+    }
+
+    #[cfg(feature = "gs1-composite")]
+    #[test]
+    fn parses_composite_packet_with_valid_separator() {
+        let transport = Transport {
+            symbology_id: SymbologyId::LowerE1,
+            carrier: CarrierFamily::Gs1Composite,
+            kind: TransportKind::Gs1CompositePacket,
+        };
+        let parsed =
+            super::parse_composite_packet(transport, b"2112345678900|]e00109520123456788".to_vec())
+                .expect("parse should succeed");
+        match parsed.parsed {
+            ParsedPayload::CompositePacket(raw) => {
+                assert_eq!(raw, b"2112345678900|]e00109520123456788");
+            }
+            other => panic!("unexpected parsed payload: {other:?}"),
+        }
+    }
+
+    #[cfg(feature = "gs1-composite")]
+    #[test]
+    fn rejects_composite_packet_without_separator() {
+        let transport = Transport {
+            symbology_id: SymbologyId::LowerE1,
+            carrier: CarrierFamily::Gs1Composite,
+            kind: TransportKind::Gs1CompositePacket,
+        };
+        let err =
+            super::parse_composite_packet(transport, b"21123456789000109520123456788".to_vec())
+                .expect_err("parse should fail");
+        assert!(err
+            .to_string()
+            .contains("composite packet must contain '|]e0' separator"));
+    }
+
+    #[cfg(feature = "gs1-composite")]
+    #[test]
+    fn rejects_composite_packet_with_empty_cc_component() {
+        let transport = Transport {
+            symbology_id: SymbologyId::LowerE1,
+            carrier: CarrierFamily::Gs1Composite,
+            kind: TransportKind::Gs1CompositePacket,
+        };
+        let err = super::parse_composite_packet(transport, b"2112345678900|]e0".to_vec())
+            .expect_err("parse should fail");
+        assert!(err
+            .to_string()
+            .contains("composite packet CC component must not be empty"));
     }
 
     fn fixed_ai_strategy() -> impl Strategy<Value = (String, String)> {
