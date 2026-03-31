@@ -348,3 +348,79 @@ fn j1_gs_separator_decodes_to_expected_elements() {
         ]
     );
 }
+
+#[test]
+fn carrier_separator_legality_matrix() {
+    struct Case {
+        name: &'static str,
+        sym: &'static str,
+        payload: &'static [u8],
+        should_succeed: bool,
+    }
+
+    let cases = [
+        Case {
+            name: "d2_gs_separator",
+            sym: "]d2",
+            payload: b"0109520123456788\x1d17251231",
+            should_succeed: true,
+        },
+        Case {
+            name: "c1_gs_separator",
+            sym: "]C1",
+            payload: b"0109520123456788\x1d17251231",
+            should_succeed: true,
+        },
+        Case {
+            name: "e0_gs_separator",
+            sym: "]e0",
+            payload: b"0109520123456788\x1d17251231",
+            should_succeed: true,
+        },
+        Case {
+            name: "j1_gs_separator",
+            sym: "]J1",
+            payload: b"0109520123456788\x1d17251231",
+            should_succeed: true,
+        },
+        Case {
+            name: "q3_percent_separator",
+            sym: "]Q3",
+            payload: b"0109520123456788%17251231",
+            should_succeed: true,
+        },
+        Case {
+            name: "q3_gs_separator",
+            sym: "]Q3",
+            payload: b"0109520123456788\x1d17251231",
+            should_succeed: true,
+        },
+        Case {
+            name: "d2_double_separator_rejected",
+            sym: "]d2",
+            payload: b"0109520123456788\x1d\x1d17251231",
+            should_succeed: false,
+        },
+        Case {
+            name: "q3_double_separator_rejected",
+            sym: "]Q3",
+            payload: b"0109520123456788\x1d\x1d17251231",
+            should_succeed: false,
+        },
+    ];
+
+    let codec = Gs1Codec;
+    for case in cases {
+        let got = codec.decode(ScanInput::new(case.sym, case.payload));
+        if case.should_succeed {
+            let decoded = got.unwrap_or_else(|e| panic!("{} should decode: {e}", case.name));
+            assert!(
+                decoded.parsed.ai_elements().is_some(),
+                "{} expected GS1 elements",
+                case.name
+            );
+        } else {
+            assert!(got.is_err(), "{} should fail", case.name);
+        }
+    }
+}

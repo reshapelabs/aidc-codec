@@ -217,6 +217,14 @@ mod tests {
     }
 
     #[test]
+    fn policy_variable_then_fixed_without_separator_is_single_variable_element() {
+        let elements = parse_ai_elements(b"10BATCH4217010101").expect("parse should succeed");
+        assert_eq!(elements.len(), 1);
+        assert_eq!(elements[0].ai.code(), "10");
+        assert_eq!(elements[0].value, "BATCH4217010101");
+    }
+
+    #[test]
     fn clause_mixed_predefined_and_variable_ordering_cases() {
         struct Case<'a> {
             name: &'a str,

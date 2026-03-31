@@ -30,6 +30,15 @@ struct DlParseCase {
     validate_unknown_ai_not_dl_attr: bool,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct ClauseScanDataProcessCase {
+    clause_id: String,
+    should_succeed: bool,
+    scan_data: String,
+    expected_sym: String,
+    expected_data: String,
+}
+
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
 }
@@ -58,6 +67,10 @@ fn load_scandata_process_cases() -> Vec<ScanDataProcessCase> {
 
 fn load_dl_parse_cases() -> Vec<DlParseCase> {
     read_jsonl("dl_parse.jsonl")
+}
+
+fn load_clause_scandata_process_cases() -> Vec<ClauseScanDataProcessCase> {
+    read_jsonl("clause_scandata_process.jsonl")
 }
 
 #[test]
@@ -104,6 +117,30 @@ fn fixtures_sanity_dl_parse() {
             && c.expected == "^0112312312312333"
     });
     assert!(has_known, "missing known parseDLuri fixture");
+}
+
+#[test]
+fn fixtures_sanity_clause_scandata_process() {
+    let cases = load_clause_scandata_process_cases();
+    assert!(
+        cases.len() >= 6,
+        "too few clause scandata cases: {}",
+        cases.len()
+    );
+    assert!(
+        cases.iter().all(|c| !c.clause_id.trim().is_empty()),
+        "all clause fixtures must include clause_id"
+    );
+
+    let unique_clause_count = cases
+        .iter()
+        .map(|c| c.clause_id.as_str())
+        .collect::<std::collections::HashSet<_>>()
+        .len();
+    assert!(
+        unique_clause_count >= 3,
+        "expected at least 3 unique clause ids, got {unique_clause_count}"
+    );
 }
 
 #[test]
@@ -198,6 +235,41 @@ fn conformance_dl_parse_vectors() {
             panic!(
                 "expected DL failure for input {:?}, got {:?}",
                 case.input,
+                got.ok()
+            );
+        }
+    }
+}
+
+#[test]
+fn conformance_clause_scandata_vectors() {
+    let cases = load_clause_scandata_process_cases();
+    assert!(!cases.is_empty(), "no clause scan-data fixtures found");
+
+    for case in cases {
+        let got = process_scan_data(&case.scan_data);
+        if case.should_succeed {
+            let out = got.unwrap_or_else(|e| {
+                panic!(
+                    "[{}] expected success for scan_data {:?}, got error: {e}",
+                    case.clause_id, case.scan_data
+                )
+            });
+            assert_eq!(
+                out.sym_name, case.expected_sym,
+                "[{}] sym mismatch for scan_data {:?}",
+                case.clause_id, case.scan_data
+            );
+            assert_eq!(
+                out.data_str, case.expected_data,
+                "[{}] data_str mismatch for scan_data {:?}",
+                case.clause_id, case.scan_data
+            );
+        } else if got.is_ok() {
+            panic!(
+                "[{}] expected failure for scan_data {:?}, got {:?}",
+                case.clause_id,
+                case.scan_data,
                 got.ok()
             );
         }

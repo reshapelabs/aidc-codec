@@ -563,3 +563,48 @@ fn to_internal_ai_string(elements: &[(String, String)]) -> String {
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_dl_uri, DlParseOptions};
+
+    #[test]
+    fn dl_query_duplicate_ai_is_rejected() {
+        let err = parse_dl_uri(
+            "https://id.gs1.org/01/09520123456788?99=ABC&99=XYZ",
+            DlParseOptions::default(),
+        )
+        .expect_err("duplicate query AI should fail");
+        assert!(err.to_string().contains("repeated AI in query/path"));
+    }
+
+    #[test]
+    fn dl_query_path_duplicate_ai_is_rejected() {
+        let err = parse_dl_uri(
+            "https://id.gs1.org/01/09520123456788/10/ABC?10=XYZ",
+            DlParseOptions::default(),
+        )
+        .expect_err("duplicate path/query AI should fail");
+        assert!(err.to_string().contains("repeated AI in query/path"));
+    }
+
+    #[test]
+    fn dl_query_order_is_preserved_in_internal_representation() {
+        let internal = parse_dl_uri(
+            "https://id.gs1.org/01/09520123456788?17=201225&3103=000195&3922=0299",
+            DlParseOptions::default(),
+        )
+        .expect("parse should succeed");
+        assert_eq!(internal, "^010952012345678817201225310300019539220299");
+    }
+
+    #[test]
+    fn dl_path_then_query_variable_fields_insert_separator() {
+        let internal = parse_dl_uri(
+            "https://id.gs1.org/01/09520123456788/10/ABC123?99=XYZ",
+            DlParseOptions::default(),
+        )
+        .expect("parse should succeed");
+        assert_eq!(internal, "^010952012345678810ABC123^99XYZ");
+    }
+}
