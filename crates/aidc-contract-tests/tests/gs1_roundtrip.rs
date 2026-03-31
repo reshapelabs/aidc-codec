@@ -144,6 +144,50 @@ fn i1_encode_rejects_non_itf14_payload() {
     assert!(matches!(err, AidcError::InvalidPayload(_)));
 }
 
+#[test]
+fn dl_encode_then_decode_preserves_gs1_semantics() {
+    let codec = Gs1Codec;
+    let req = EncodeInput {
+        symbology_identifier: "]Q1".to_owned(),
+        payload: CanonicalPayload::Elements(vec![
+            DataElement {
+                id: "01".to_owned(),
+                value: "9520123456788".to_owned(),
+            },
+            DataElement {
+                id: "10".to_owned(),
+                value: "ABC123".to_owned(),
+            },
+            DataElement {
+                id: "21".to_owned(),
+                value: "SER42".to_owned(),
+            },
+            DataElement {
+                id: "17".to_owned(),
+                value: "201225".to_owned(),
+            },
+        ]),
+    };
+    let encoded = codec.encode(req).expect("encode must succeed");
+    let uri = String::from_utf8(encoded.raw.clone()).expect("dl uri must be utf8");
+    assert_eq!(
+        uri,
+        "https://id.gs1.org/01/09520123456788/10/ABC123/21/SER42?17=201225"
+    );
+    let decoded = codec
+        .decode(ScanInput::new(&encoded.symbology_identifier, &encoded.raw))
+        .expect("decode must succeed");
+    assert_eq!(
+        elements_semantic(&decoded.parsed),
+        Some(vec![
+            ("01".to_owned(), "09520123456788".to_owned()),
+            ("10".to_owned(), "ABC123".to_owned()),
+            ("21".to_owned(), "SER42".to_owned()),
+            ("17".to_owned(), "201225".to_owned()),
+        ])
+    );
+}
+
 fn fixed_ai_strategy() -> impl Strategy<Value = DataElement> {
     prop_oneof![
         proptest::string::string_regex("[0-9]{17}")

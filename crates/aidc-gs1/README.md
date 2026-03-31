@@ -59,7 +59,7 @@ This crate tracks GS1 conformance using a requirement matrix.
 | GS1-7.9.3-01 | 7.9.3 | Four-digit price-field check digit calculation | In | PASS | `price_or_weight_check_digit_vectors` | `src/check.rs` | |
 | GS1-7.9.4-01 | 7.9.4 | Five-digit price-field check digit calculation | In | PASS | `price_or_weight_check_digit_vectors` | `src/check.rs` | |
 | GS1-7.9.5-01 | 7.9.5 | Alphanumeric check-character pair calculation | In | PASS | `check_character_pair_vectors` | `src/check.rs` | |
-| GS1-DL-ENC-001 | GS1 Digital Link Std | GS1 Digital Link encode from canonical payload | In | GAP | N/A | `src/encode.rs` | Not implemented. |
+| GS1-DL-ENC-001 | GS1 Digital Link Std | GS1 Digital Link encode from canonical payload | In | PASS | `encode::tests::dl_encode_builds_canonical_uri_with_qualifiers_and_sorted_query`, `gs1_roundtrip::dl_encode_then_decode_preserves_gs1_semantics` | `src/encode.rs` | Encodes canonical URI at `https://id.gs1.org` with path primary/qualifiers and sorted query attributes. |
 | GS1-7.3-03 | 7.3 | Required AI pattern associations enforced | In | PASS | `validates_required_pattern_associations` | `src/ai.rs` | |
 | GS1-7.4-02 | 7.4 | AI `01` fixed numeric length and charset enforcement | In | PASS | `validates_ai_01_numeric_fixed_length` | `src/ai.rs` | |
 | GS1-7.4-03 | 7.4 | AI `10` variable-length AI82 charset enforcement | In | PASS | `validates_ai_10_variable_x_charset` | `src/ai.rs` | |

@@ -303,8 +303,7 @@ mod tests {
                     err
                 );
             } else {
-                let parsed =
-                    got.unwrap_or_else(|e| panic!("{} should parse, got {e}", case.name));
+                let parsed = got.unwrap_or_else(|e| panic!("{} should parse, got {e}", case.name));
                 assert_eq!(
                     parsed.len(),
                     case.expected_elements,

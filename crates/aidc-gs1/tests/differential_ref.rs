@@ -40,9 +40,14 @@ impl RefApi {
     fn load(path: &str) -> Result<Self, String> {
         let lib = unsafe { Library::new(path) }
             .map_err(|e| format!("failed to load reference lib {path}: {e}"))?;
-        let init =
-            unsafe { load_sym::<unsafe extern "C" fn(*mut c_void) -> *mut c_void>(&lib, b"gs1_encoder_init\0")? };
-        let free = unsafe { load_sym::<unsafe extern "C" fn(*mut c_void)>(&lib, b"gs1_encoder_free\0")? };
+        let init = unsafe {
+            load_sym::<unsafe extern "C" fn(*mut c_void) -> *mut c_void>(
+                &lib,
+                b"gs1_encoder_init\0",
+            )?
+        };
+        let free =
+            unsafe { load_sym::<unsafe extern "C" fn(*mut c_void)>(&lib, b"gs1_encoder_free\0")? };
         let set_scan_data = unsafe {
             load_sym::<unsafe extern "C" fn(*mut c_void, *const c_char) -> bool>(
                 &lib,
@@ -55,8 +60,9 @@ impl RefApi {
                 b"gs1_encoder_getDataStr\0",
             )?
         };
-        let get_sym =
-            unsafe { load_sym::<unsafe extern "C" fn(*mut c_void) -> c_int>(&lib, b"gs1_encoder_getSym\0")? };
+        let get_sym = unsafe {
+            load_sym::<unsafe extern "C" fn(*mut c_void) -> c_int>(&lib, b"gs1_encoder_getSym\0")?
+        };
         let get_ai_data_str = unsafe {
             load_sym::<unsafe extern "C" fn(*mut c_void) -> *const c_char>(
                 &lib,
@@ -83,9 +89,12 @@ impl RefApi {
 }
 
 unsafe fn load_sym<T: Copy>(lib: &Library, name: &'static [u8]) -> Result<T, String> {
-    let sym: Symbol<'_, T> = lib
-        .get(name)
-        .map_err(|e| format!("failed to load symbol {}: {e}", String::from_utf8_lossy(name)))?;
+    let sym: Symbol<'_, T> = lib.get(name).map_err(|e| {
+        format!(
+            "failed to load symbol {}: {e}",
+            String::from_utf8_lossy(name)
+        )
+    })?;
     Ok(*sym)
 }
 
@@ -135,8 +144,8 @@ fn run_ref(api: &RefApi, scan_data: &str) -> Result<RefOutcome, String> {
         return Err("gs1_encoder_init returned null".to_owned());
     }
 
-    let c_scan = CString::new(scan_data)
-        .map_err(|_| "scan_data contains interior NUL byte".to_owned())?;
+    let c_scan =
+        CString::new(scan_data).map_err(|_| "scan_data contains interior NUL byte".to_owned())?;
     let ok = unsafe { (api.set_scan_data)(ctx, c_scan.as_ptr()) };
     let data_ptr = unsafe { (api.get_data_str)(ctx) };
     let sym = unsafe { (api.get_sym)(ctx) };
@@ -207,7 +216,9 @@ where
     F: FnOnce(&RefApi),
 {
     let Some(lib_path) = std::env::var("AIDC_GS1_REF_LIB").ok() else {
-        eprintln!("skipping differential tests: set AIDC_GS1_REF_LIB=/abs/path/libgs1encoders.(dylib|so)");
+        eprintln!(
+            "skipping differential tests: set AIDC_GS1_REF_LIB=/abs/path/libgs1encoders.(dylib|so)"
+        );
         return;
     };
 
@@ -297,7 +308,10 @@ fn assert_semantic_parity(api: &RefApi, scan_data: &str) {
     };
     let (rust_ai, rust_hri) = match rust_semantics(scan_data) {
         Ok(Some(v)) => v,
-        Ok(None) => panic!("rust semantic decode returned no AI elements for {:?}", scan_data),
+        Ok(None) => panic!(
+            "rust semantic decode returned no AI elements for {:?}",
+            scan_data
+        ),
         Err(e) => panic!("rust semantic decode failed for {:?}: {e}", scan_data),
     };
 
@@ -347,13 +361,13 @@ fn fnc1_encoded_payload() -> impl Strategy<Value = String> {
         prop::option::of(ai21),
     )
         .prop_map(|(head, a17, a10, a21)| {
-        let mut payload = head;
-        for t in [a17, a10, a21].into_iter().flatten() {
-            payload.push('\u{001d}');
-            payload.push_str(&t);
-        }
-        payload
-    })
+            let mut payload = head;
+            for t in [a17, a10, a21].into_iter().flatten() {
+                payload.push('\u{001d}');
+                payload.push_str(&t);
+            }
+            payload
+        })
 }
 
 #[test]
@@ -378,7 +392,9 @@ fn differential_scandata_matches_reference() {
 #[test]
 fn differential_scandata_fuzz_matches_reference() {
     if std::env::var("AIDC_GS1_DIFF_PROPTEST").as_deref() != Ok("1") {
-        eprintln!("skipping differential_scandata_fuzz_matches_reference: set AIDC_GS1_DIFF_PROPTEST=1");
+        eprintln!(
+            "skipping differential_scandata_fuzz_matches_reference: set AIDC_GS1_DIFF_PROPTEST=1"
+        );
         return;
     }
 
