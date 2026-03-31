@@ -2,7 +2,7 @@ use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
 
-use aidc_core::{ScanInput, TransportCodec};
+use aidc_core::{CanonicalPayload, DataElement, EncodeInput, ScanInput, TransportCodec};
 use aidc_gs1::process_scan_data;
 use aidc_gs1::Gs1Codec;
 use libloading::{Library, Symbol};
@@ -368,6 +368,39 @@ fn fnc1_encoded_payload() -> impl Strategy<Value = String> {
             }
             payload
         })
+}
+
+#[test]
+fn differential_dl_encode_semantics_matches_reference() {
+    with_ref_api(|api| {
+        let req = EncodeInput {
+            symbology_identifier: "]Q1".to_owned(),
+            payload: CanonicalPayload::Elements(vec![
+                DataElement {
+                    id: "01".to_owned(),
+                    value: "9520123456788".to_owned(),
+                },
+                DataElement {
+                    id: "10".to_owned(),
+                    value: "ABC123".to_owned(),
+                },
+                DataElement {
+                    id: "21".to_owned(),
+                    value: "SER42".to_owned(),
+                },
+                DataElement {
+                    id: "17".to_owned(),
+                    value: "201225".to_owned(),
+                },
+            ]),
+        };
+        let encoded = Gs1Codec
+            .encode(req)
+            .expect("DL encode should succeed for valid canonical elements");
+        let uri = String::from_utf8(encoded.raw).expect("DL URI must be utf-8");
+        let scan_data = format!("{}{}", encoded.symbology_identifier, uri);
+        assert_semantic_parity(api, &scan_data);
+    });
 }
 
 #[test]
