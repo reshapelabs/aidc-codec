@@ -4,3 +4,9 @@
 {"clause_id":"7.8.6.2","should_succeed":true,"scan_data":"]Q30112312312312333\u001d\u001d99TESTING","expected_sym":"QR","expected_data":"^0112312312312333^^99TESTING"}
 {"clause_id":"7.2.6","should_succeed":true,"scan_data":"]E02112345678900","expected_sym":"EAN13","expected_data":"2112345678900"}
 {"clause_id":"7.2.6","should_succeed":false,"scan_data":"]E02112345678901","expected_sym":"NONE","expected_data":""}
+{"clause_id":"7.8.5","should_succeed":true,"scan_data":"]e12112345678900|]e099ABC\u001d98XYZ","expected_sym":"GS1Composite","expected_data":"2112345678900|^99ABC^98XYZ"}
+{"clause_id":"7.8.5","should_succeed":true,"scan_data":"]e22112345678900|]e099ABC\u001d98XYZ","expected_sym":"GS1Composite","expected_data":"2112345678900|^99ABC^98XYZ"}
+{"clause_id":"7.8.5","should_succeed":false,"scan_data":"]e1|]e099ABC","expected_sym":"NONE","expected_data":""}
+{"clause_id":"7.8.5","should_succeed":false,"scan_data":"]e221123\u000A45678900|]e099ABC","expected_sym":"NONE","expected_data":""}
+{"clause_id":"7.8.5","should_succeed":false,"scan_data":"]e22112345678900|]e0","expected_sym":"NONE","expected_data":""}
+{"clause_id":"7.8.5","should_succeed":false,"scan_data":"]e22112345678900","expected_sym":"NONE","expected_data":""}

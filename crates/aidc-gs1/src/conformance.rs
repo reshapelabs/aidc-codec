@@ -184,6 +184,7 @@ pub fn process_scan_data(scan_data: &str) -> Result<ScanDataOutcome, AidcError> 
         SymbologyId::Unknown(_) => Err(AidcError::UnsupportedSymbologyId(id.to_owned())),
         SymbologyId::E0 => process_ean(payload, "EAN13", 13),
         SymbologyId::E4 => process_ean(payload, "EAN8", 8),
+        SymbologyId::LowerE1 | SymbologyId::LowerE2 => process_generic_composite(payload),
         _ => Err(AidcError::UnsupportedSymbologyId(id.to_owned())),
     }
 }
@@ -232,6 +233,53 @@ fn process_ean(
     Ok(ScanDataOutcome {
         sym_name,
         data_str: out,
+    })
+}
+
+fn process_generic_composite(payload: &str) -> Result<ScanDataOutcome, AidcError> {
+    if payload.contains('^') {
+        return Err(AidcError::InvalidInput(
+            "raw '^' is not valid in scan payload".to_owned(),
+        ));
+    }
+    let Some((linear, cc)) = payload.split_once("|]e0") else {
+        return Err(AidcError::InvalidInput(
+            "composite payload missing '|]e0'".to_owned(),
+        ));
+    };
+    if payload.matches("|]e0").count() > 1 {
+        return Err(AidcError::InvalidInput(
+            "composite payload must contain one '|]e0' separator".to_owned(),
+        ));
+    }
+    if linear.is_empty() {
+        return Err(AidcError::InvalidInput(
+            "composite linear component must not be empty".to_owned(),
+        ));
+    }
+    if linear.chars().any(|c| c.is_control()) {
+        return Err(AidcError::InvalidInput(
+            "composite linear component must not contain control characters".to_owned(),
+        ));
+    }
+    if cc.is_empty() {
+        return Err(AidcError::InvalidInput(
+            "empty composite payload".to_owned(),
+        ));
+    }
+
+    let mut cc_data = String::from("^");
+    for ch in cc.chars() {
+        if ch == '\u{001d}' {
+            cc_data.push('^');
+        } else {
+            cc_data.push(ch);
+        }
+    }
+
+    Ok(ScanDataOutcome {
+        sym_name: "GS1Composite",
+        data_str: format!("{linear}|{cc_data}"),
     })
 }
 
