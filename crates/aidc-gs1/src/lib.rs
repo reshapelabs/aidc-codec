@@ -47,7 +47,11 @@ impl TransportCodec for Gs1Codec {
     fn format_payload(&self, input: Self::EncodeRequest) -> Result<Self::TransportMsg, AidcError> {
         let mut transport = identify_transport(&input.symbology_identifier)?;
         if matches!(transport.symbology_id, SymbologyId::E0 | SymbologyId::E4)
-            && matches!(input.payload, aidc_core::CanonicalPayload::Elements(_))
+            && matches!(
+                input.payload,
+                aidc_core::CanonicalPayload::Elements(_)
+                    | aidc_core::CanonicalPayload::Composite { .. }
+            )
         {
             transport.carrier = CarrierFamily::Gs1Composite;
             transport.kind = TransportKind::Gs1CompositePacket;

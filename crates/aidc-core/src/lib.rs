@@ -16,6 +16,10 @@ pub struct DataElement {
 pub enum CanonicalPayload {
     Digits(String),
     Elements(Vec<DataElement>),
+    Composite {
+        linear: String,
+        elements: Vec<DataElement>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

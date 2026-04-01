@@ -31,18 +31,33 @@ fn to_encode_input_from_decoded(decoded: &ParseResult) -> Option<EncodeInput> {
             ),
         }),
         ParsedPayload::Gs1DigitalLink { .. } => None,
-        ParsedPayload::CompositePacket { cc_elements, .. } => Some(EncodeInput {
-            symbology_identifier: sym,
-            payload: CanonicalPayload::Elements(
-                cc_elements
-                    .iter()
-                    .map(|e| DataElement {
-                        id: e.ai.code().to_owned(),
-                        value: e.value.clone(),
-                    })
-                    .collect(),
-            ),
-        }),
+        ParsedPayload::CompositePacket {
+            linear,
+            cc_elements,
+            ..
+        } => {
+            let mut elements = cc_elements
+                .iter()
+                .map(|e| DataElement {
+                    id: e.ai.code().to_owned(),
+                    value: e.value.clone(),
+                })
+                .collect::<Vec<_>>();
+            if matches!(
+                decoded.transport.symbology_id,
+                SymbologyId::E0 | SymbologyId::E4
+            ) && elements.first().is_some_and(|e| e.id == "01")
+            {
+                elements.remove(0);
+            }
+            Some(EncodeInput {
+                symbology_identifier: sym,
+                payload: CanonicalPayload::Composite {
+                    linear: linear.clone(),
+                    elements,
+                },
+            })
+        }
     }
 }
 
@@ -583,4 +598,40 @@ fn ean8_composite_decode_rejects_missing_cc_payload() {
         .decode(ScanInput::new("]E4", b"02345673|]e0"))
         .expect_err("decode should fail");
     assert!(matches!(err, AidcError::InvalidPayload(_)));
+}
+
+#[test]
+fn lowere1_composite_encode_then_decode_preserves_gs1_semantics() {
+    let codec = Gs1Codec;
+    let encoded = codec
+        .encode(EncodeInput {
+            symbology_identifier: "]e1".to_owned(),
+            payload: CanonicalPayload::Composite {
+                linear: "2112345678900".to_owned(),
+                elements: vec![
+                    DataElement {
+                        id: "99".to_owned(),
+                        value: "ABC".to_owned(),
+                    },
+                    DataElement {
+                        id: "98".to_owned(),
+                        value: "XYZ".to_owned(),
+                    },
+                ],
+            },
+        })
+        .expect("encode should succeed");
+    assert_eq!(encoded.symbology_identifier, "]e1");
+    assert_eq!(encoded.raw, b"2112345678900|]e099ABC\x1d98XYZ");
+
+    let decoded = codec
+        .decode(ScanInput::new(&encoded.symbology_identifier, &encoded.raw))
+        .expect("decode should succeed");
+    assert_eq!(
+        elements_semantic(&decoded.parsed),
+        Some(vec![
+            ("99".to_owned(), "ABC".to_owned()),
+            ("98".to_owned(), "XYZ".to_owned()),
+        ])
+    );
 }

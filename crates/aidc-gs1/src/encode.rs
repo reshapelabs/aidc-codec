@@ -23,7 +23,26 @@ pub fn encode_payload(
             encode_digital_link(elements)
         }
         (TransportKind::Gs1CompositePacket, CanonicalPayload::Elements(elements)) => {
-            encode_composite_packet(transport, elements)
+            encode_composite_packet_from_elements(transport, elements)
+        }
+        (
+            TransportKind::Gs1CompositePacket,
+            CanonicalPayload::Composite { linear, elements },
+        ) => encode_composite_packet_from_parts(transport, linear, elements),
+        (TransportKind::PlainDigits, CanonicalPayload::Composite { .. }) => {
+            Err(AidcError::InvalidPayload(
+                "digits transport does not support composite canonical payload".to_owned(),
+            ))
+        }
+        (TransportKind::Gs1ElementString, CanonicalPayload::Composite { .. }) => {
+            Err(AidcError::InvalidPayload(
+                "element-string transport does not support composite canonical payload".to_owned(),
+            ))
+        }
+        (TransportKind::Gs1DigitalLinkUri, CanonicalPayload::Composite { .. }) => {
+            Err(AidcError::InvalidPayload(
+                "digital-link transport does not support composite canonical payload".to_owned(),
+            ))
         }
         (TransportKind::PlainDigits, _) => Err(AidcError::InvalidPayload(
             "digits transport requires CanonicalPayload::Digits".to_owned(),
@@ -35,12 +54,13 @@ pub fn encode_payload(
             "digital-link transport requires CanonicalPayload::Elements".to_owned(),
         )),
         (TransportKind::Gs1CompositePacket, _) => Err(AidcError::InvalidPayload(
-            "composite transport requires CanonicalPayload::Elements".to_owned(),
+            "composite transport requires CanonicalPayload::Elements or CanonicalPayload::Composite"
+                .to_owned(),
         )),
     }
 }
 
-fn encode_composite_packet(
+fn encode_composite_packet_from_elements(
     transport: &Transport,
     elements: Vec<DataElement>,
 ) -> Result<Vec<u8>, AidcError> {
@@ -71,8 +91,26 @@ fn encode_composite_packet(
 
     let gtin14 = canonicalized_value("01", &elements[0].value);
     let linear = linear_from_primary(transport, &gtin14)?;
-    let cc = encode_element_string(elements.into_iter().skip(1).collect())?;
+    encode_composite_packet_from_parts(transport, linear, elements.into_iter().skip(1).collect())
+}
 
+fn encode_composite_packet_from_parts(
+    transport: &Transport,
+    linear: String,
+    elements: Vec<DataElement>,
+) -> Result<Vec<u8>, AidcError> {
+    if linear.is_empty() {
+        return Err(AidcError::InvalidPayload(
+            "composite payload linear component must not be empty".to_owned(),
+        ));
+    }
+    if linear.contains("|]e0") {
+        return Err(AidcError::InvalidPayload(
+            "composite payload linear component must not include '|]e0'".to_owned(),
+        ));
+    }
+    let linear = validate_linear_component(transport, linear)?;
+    let cc = encode_element_string(elements)?;
     let mut out = Vec::with_capacity(linear.len() + 4 + cc.len());
     out.extend_from_slice(linear.as_bytes());
     out.extend_from_slice(b"|]e0");
@@ -117,8 +155,40 @@ fn linear_from_primary(transport: &Transport, gtin14: &str) -> Result<String, Ai
             Ok(linear)
         }
         _ => Err(AidcError::UnsupportedTransportKind(
-            "composite encode is only supported for ]E0 and ]E4".to_owned(),
+            "composite encode from AI elements is only supported for ]E0 and ]E4".to_owned(),
         )),
+    }
+}
+
+fn validate_linear_component(transport: &Transport, linear: String) -> Result<String, AidcError> {
+    match transport.symbology_id {
+        SymbologyId::E0 => {
+            if linear.len() != 13 || !linear.as_bytes().iter().all(u8::is_ascii_digit) {
+                return Err(AidcError::InvalidPayload(
+                    "EAN-13 composite linear component must be 13 digits".to_owned(),
+                ));
+            }
+            if !has_valid_mod10(linear.as_bytes()) {
+                return Err(AidcError::InvalidPayload(
+                    "invalid EAN-13 check digit in composite linear component".to_owned(),
+                ));
+            }
+            Ok(linear)
+        }
+        SymbologyId::E4 => {
+            if linear.len() != 8 || !linear.as_bytes().iter().all(u8::is_ascii_digit) {
+                return Err(AidcError::InvalidPayload(
+                    "EAN-8 composite linear component must be 8 digits".to_owned(),
+                ));
+            }
+            if !has_valid_mod10(linear.as_bytes()) {
+                return Err(AidcError::InvalidPayload(
+                    "invalid EAN-8 check digit in composite linear component".to_owned(),
+                ));
+            }
+            Ok(linear)
+        }
+        _ => Ok(linear),
     }
 }
 
@@ -439,6 +509,32 @@ mod tests {
     }
 
     #[test]
+    fn composite_encode_from_explicit_parts_builds_lowere1_packet() {
+        let out = encode_payload(
+            &Transport {
+                symbology_id: SymbologyId::LowerE1,
+                carrier: CarrierFamily::Gs1Composite,
+                kind: TransportKind::Gs1CompositePacket,
+            },
+            CanonicalPayload::Composite {
+                linear: "2112345678900".to_owned(),
+                elements: vec![
+                    DataElement {
+                        id: "99".to_owned(),
+                        value: "ABC".to_owned(),
+                    },
+                    DataElement {
+                        id: "98".to_owned(),
+                        value: "XYZ".to_owned(),
+                    },
+                ],
+            },
+        )
+        .expect("encode should succeed");
+        assert_eq!(out, b"2112345678900|]e099ABC\x1d98XYZ");
+    }
+
+    #[test]
     fn composite_encode_rejects_missing_cc_ai() {
         let err = encode_payload(
             &Transport {
@@ -504,7 +600,7 @@ mod tests {
     }
 
     #[test]
-    fn composite_encode_rejects_non_ean_symbology() {
+    fn composite_encode_from_elements_rejects_non_ean_symbology() {
         let err = encode_payload(
             &Transport {
                 symbology_id: SymbologyId::LowerE1,
@@ -524,6 +620,28 @@ mod tests {
         )
         .expect_err("encode should fail");
         assert!(matches!(err, AidcError::UnsupportedTransportKind(_)));
+    }
+
+    #[test]
+    fn composite_encode_from_explicit_parts_rejects_empty_linear() {
+        let err = encode_payload(
+            &Transport {
+                symbology_id: SymbologyId::LowerE1,
+                carrier: CarrierFamily::Gs1Composite,
+                kind: TransportKind::Gs1CompositePacket,
+            },
+            CanonicalPayload::Composite {
+                linear: String::new(),
+                elements: vec![DataElement {
+                    id: "99".to_owned(),
+                    value: "ABC".to_owned(),
+                }],
+            },
+        )
+        .expect_err("encode should fail");
+        assert!(err
+            .to_string()
+            .contains("linear component must not be empty"));
     }
 
     #[test]
