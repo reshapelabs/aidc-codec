@@ -123,3 +123,15 @@ mise exec -- cargo clippy --workspace --all-targets --all-features -- -D warning
 mise exec -- cargo nextest run --workspace --all-features
 mise run gs1-diff
 ```
+
+### Production API Stability Checklist
+
+Use this checklist before declaring a production-stable API surface:
+
+- [x] Lock public error taxonomy (`AidcError` variants + stable message text for key failure modes)
+- [x] Lock composite routing contract for `]E0`/`]E4` encode from `CanonicalPayload::Elements`
+- [x] Lock explicit generic composite contract for `]e1`/`]e2` encode from `CanonicalPayload::Composite`
+- [x] Lock decode output shape for composite packets (`ParsedPayload::CompositePacket` + `to_hri()`)
+- [ ] Define semver policy for newly added `CanonicalPayload::Composite` in `aidc-core`
+- [ ] Add CI job that runs API-stability contract tests separately from feature tests
+- [ ] Add explicit deprecation/change policy for error message text and symbology routing behavior
