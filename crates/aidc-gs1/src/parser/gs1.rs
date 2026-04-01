@@ -67,6 +67,15 @@ pub fn parse_composite_packet(
             "composite packet linear component must not be empty".to_owned(),
         ));
     }
+    if !matches!(
+        transport.symbology_id,
+        crate::model::SymbologyId::E0 | crate::model::SymbologyId::E4
+    ) && linear.chars().any(|c| c.is_control())
+    {
+        return Err(AidcError::InvalidPayload(
+            "composite packet linear component must not contain control characters".to_owned(),
+        ));
+    }
     if cc.is_empty() {
         return Err(AidcError::InvalidPayload(
             "composite packet CC component must not be empty".to_owned(),
@@ -480,6 +489,21 @@ mod tests {
         assert!(err
             .to_string()
             .contains("composite packet CC component must not be empty"));
+    }
+
+    #[cfg(feature = "gs1-composite")]
+    #[test]
+    fn rejects_non_ean_composite_packet_with_control_chars_in_linear() {
+        let transport = Transport {
+            symbology_id: SymbologyId::LowerE2,
+            carrier: CarrierFamily::Gs1Composite,
+            kind: TransportKind::Gs1CompositePacket,
+        };
+        let err = super::parse_composite_packet(transport, b"21123\n45678900|]e099ABC".to_vec())
+            .expect_err("parse should fail");
+        assert!(err
+            .to_string()
+            .contains("linear component must not contain control characters"));
     }
 
     #[cfg(feature = "gs1-composite")]

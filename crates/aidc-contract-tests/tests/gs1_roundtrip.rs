@@ -635,3 +635,39 @@ fn lowere1_composite_encode_then_decode_preserves_gs1_semantics() {
         ])
     );
 }
+
+#[test]
+fn lowere2_composite_encode_then_decode_preserves_gs1_semantics() {
+    let codec = Gs1Codec;
+    let encoded = codec
+        .encode(EncodeInput {
+            symbology_identifier: "]e2".to_owned(),
+            payload: CanonicalPayload::Composite {
+                linear: "2112345678900".to_owned(),
+                elements: vec![
+                    DataElement {
+                        id: "99".to_owned(),
+                        value: "ABC".to_owned(),
+                    },
+                    DataElement {
+                        id: "98".to_owned(),
+                        value: "XYZ".to_owned(),
+                    },
+                ],
+            },
+        })
+        .expect("encode should succeed");
+    assert_eq!(encoded.symbology_identifier, "]e2");
+    assert_eq!(encoded.raw, b"2112345678900|]e099ABC\x1d98XYZ");
+
+    let decoded = codec
+        .decode(ScanInput::new(&encoded.symbology_identifier, &encoded.raw))
+        .expect("decode should succeed");
+    assert_eq!(
+        elements_semantic(&decoded.parsed),
+        Some(vec![
+            ("99".to_owned(), "ABC".to_owned()),
+            ("98".to_owned(), "XYZ".to_owned()),
+        ])
+    );
+}

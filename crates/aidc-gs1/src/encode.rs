@@ -188,7 +188,14 @@ fn validate_linear_component(transport: &Transport, linear: String) -> Result<St
             }
             Ok(linear)
         }
-        _ => Ok(linear),
+        _ => {
+            if linear.chars().any(|c| c.is_control()) {
+                return Err(AidcError::InvalidPayload(
+                    "composite linear component must not contain control characters".to_owned(),
+                ));
+            }
+            Ok(linear)
+        }
     }
 }
 
@@ -642,6 +649,28 @@ mod tests {
         assert!(err
             .to_string()
             .contains("linear component must not be empty"));
+    }
+
+    #[test]
+    fn composite_encode_from_explicit_parts_rejects_control_chars_in_linear() {
+        let err = encode_payload(
+            &Transport {
+                symbology_id: SymbologyId::LowerE2,
+                carrier: CarrierFamily::Gs1Composite,
+                kind: TransportKind::Gs1CompositePacket,
+            },
+            CanonicalPayload::Composite {
+                linear: "211234\n5678900".to_owned(),
+                elements: vec![DataElement {
+                    id: "99".to_owned(),
+                    value: "ABC".to_owned(),
+                }],
+            },
+        )
+        .expect_err("encode should fail");
+        assert!(err
+            .to_string()
+            .contains("must not contain control characters"));
     }
 
     #[test]
