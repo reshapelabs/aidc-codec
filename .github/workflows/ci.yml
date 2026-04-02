@@ -25,6 +25,18 @@ jobs:
       - name: Fixture Sync Check
         run: mise run gs1-fixtures-check
 
+  api-stability:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+
+      - name: API Stability Contracts
+        run: mise exec -- cargo nextest run -p aidc-contract-tests api_stability --all-features
+
   gs1-reference:
     runs-on: ubuntu-latest
     steps:

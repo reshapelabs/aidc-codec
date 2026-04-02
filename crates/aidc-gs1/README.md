@@ -132,6 +132,29 @@ Use this checklist before declaring a production-stable API surface:
 - [x] Lock composite routing contract for `]E0`/`]E4` encode from `CanonicalPayload::Elements`
 - [x] Lock explicit generic composite contract for `]e1`/`]e2` encode from `CanonicalPayload::Composite`
 - [x] Lock decode output shape for composite packets (`ParsedPayload::CompositePacket` + `to_hri()`)
-- [ ] Define semver policy for newly added `CanonicalPayload::Composite` in `aidc-core`
-- [ ] Add CI job that runs API-stability contract tests separately from feature tests
-- [ ] Add explicit deprecation/change policy for error message text and symbology routing behavior
+- [x] Define semver policy for newly added `CanonicalPayload::Composite` in `aidc-core`
+- [x] Add CI job that runs API-stability contract tests separately from feature tests
+- [x] Add explicit deprecation/change policy for error message text and symbology routing behavior
+
+### Semver Policy (`aidc-core` + `aidc-gs1`)
+
+- `MAJOR`:
+  - remove/rename public enum variants (`CanonicalPayload`, `AidcError`, `ParsedPayload`)
+  - change transport routing semantics for existing symbology identifiers
+  - change stable error message text asserted by API-stability contract tests
+- `MINOR`:
+  - add new enum variants without changing existing behavior
+  - add support for new symbologies or payload forms that were previously unsupported
+  - add new non-breaking validation that only rejects previously invalid payloads
+- `PATCH`:
+  - bug fixes that preserve existing API/stability contracts
+  - internal refactors with no change to encoded output or error surface for covered contracts
+
+### Deprecation and Change Policy
+
+- Error text and routing behavior covered by `crates/aidc-contract-tests/tests/api_stability.rs` are treated as stable API.
+- Behavior changes to covered contracts require:
+  - an explicit changelog entry describing old vs new behavior,
+  - at least one release cycle of deprecation notice in docs,
+  - major version bump if the change is breaking per policy above.
+- New contracts can be added in minor releases, but existing contracts may not be silently weakened.
