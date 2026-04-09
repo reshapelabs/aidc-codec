@@ -2,6 +2,48 @@
 
 GS1 codec crate for transport identification, normalization, decoding, and encoding.
 
+## Decode Input Expectations
+
+Strict decode APIs in this crate expect AIM carrier input where the first 3 bytes/chars are the symbology identifier (`]xx`).
+
+Accepted examples:
+- `]d20109520123456788`
+- `]Q3https://id.gs1.org/01/09520123456788`
+
+Rejected by strict decode:
+- `0109520123456788` (no AIM symbology identifier)
+- `(01)09520123456788` (HRI/bracketed form)
+
+Use `decode_scan(&[u8])` for byte input and `decode_aim_str(&str)` for UTF-8 string input.
+
+## Round-Trip Example (Encode -> AIM -> Decode -> HRI)
+
+```rust
+use aidc_core::{CanonicalPayload, DataElement, EncodeInput, TransportCodec};
+use aidc_gs1::{decode_scan, Gs1Codec};
+
+let codec = Gs1Codec;
+let encoded = codec.encode(EncodeInput {
+    symbology_identifier: "]d2".to_owned(),
+    payload: CanonicalPayload::Elements(vec![
+        DataElement {
+            id: "01".to_owned(),
+            value: "09520123456788".to_owned(),
+        },
+        DataElement {
+            id: "17".to_owned(),
+            value: "250101".to_owned(),
+        },
+    ]),
+})?;
+
+let mut scan = encoded.symbology_identifier.into_bytes();
+scan.extend_from_slice(&encoded.raw);
+let decoded = decode_scan(&scan)?;
+assert_eq!(decoded.to_hri().as_deref(), Some("(01)09520123456788(17)250101"));
+# Ok::<(), aidc_core::AidcError>(())
+```
+
 ## Conformance
 
 This crate tracks GS1 conformance using a requirement matrix.

@@ -1,3 +1,8 @@
+//! Shared AIDC transport/input and codec interfaces.
+//!
+//! Most integrations use [`ScanInput::from_aim_scan`] to split an AIM carrier
+//! scan (`]d2...`, `]Q3...`) into `symbology_identifier` and payload bytes.
+
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,6 +40,7 @@ pub struct EncodedScan {
 }
 
 impl<'a> ScanInput<'a> {
+    /// Constructs scan input from a pre-split symbology identifier and payload.
     pub fn new(symbology_identifier: &'a str, raw: &'a [u8]) -> Self {
         Self {
             symbology_identifier,
@@ -42,6 +48,15 @@ impl<'a> ScanInput<'a> {
         }
     }
 
+    /// Parses a full AIM scan where the first 3 bytes are the symbology id.
+    ///
+    /// Accepted examples:
+    /// - `b"]d20109520123456788"`
+    /// - `b"]Q3https://id.gs1.org/01/09520123456788"`
+    ///
+    /// Rejected examples:
+    /// - `b"0109520123456788"` (missing AIM prefix)
+    /// - `b"]d"` (too short)
     pub fn from_aim_scan(scan: &'a [u8]) -> Result<Self, AidcError> {
         if scan.len() < 3 {
             return Err(AidcError::InvalidInput(
@@ -75,6 +90,7 @@ pub enum AidcError {
     InvalidPayload(String),
 }
 
+/// Generic transport codec interface for AIDC carriers.
 pub trait TransportCodec {
     type TransportMsg;
     type Decoded;
