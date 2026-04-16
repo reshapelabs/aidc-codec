@@ -10,6 +10,7 @@ use sha2::{Digest, Sha256};
 struct Meta {
     fixed_len: Option<u8>,
     components: Vec<Component>,
+    title: Option<String>,
     fnc1_required: bool,
     dl_data_attr: bool,
     dl_primary_key: bool,
@@ -86,6 +87,11 @@ fn main() {
 
         let mut split = line.splitn(2, '#');
         let body = split.next().unwrap_or_default().trim();
+        let title = split
+            .next()
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .map(str::to_owned);
         if body.is_empty() {
             continue;
         }
@@ -149,6 +155,7 @@ fn main() {
         let meta = Meta {
             fixed_len,
             components,
+            title,
             fnc1_required: !flags.contains('*'),
             dl_data_attr: flags.contains('?'),
             dl_primary_key,
@@ -203,6 +210,10 @@ fn main() {
             Some(n) => format!("Some({n})"),
             None => "None".to_owned(),
         };
+        let title = match &m.title {
+            Some(v) => format!("Some({v:?})"),
+            None => "None".to_owned(),
+        };
         let quals = match &m.dl_qualifiers {
             Some(q) => format!("Some({q:?})"),
             None => "None".to_owned(),
@@ -239,7 +250,7 @@ fn main() {
             .collect::<Vec<_>>()
             .join(", ");
         out.push_str(&format!(
-            "    {ai:?} => AiMeta {{ code: {ai:?}, fixed_len: {fixed}, components: &[{components}], fnc1_required: {}, dl_data_attr: {}, dl_primary_key: {}, dl_qualifiers: {}, req_rules: {}, ex_rules: {} }},\n",
+            "    {ai:?} => AiMeta {{ code: {ai:?}, title: {title}, fixed_len: {fixed}, components: &[{components}], fnc1_required: {}, dl_data_attr: {}, dl_primary_key: {}, dl_qualifiers: {}, req_rules: {}, ex_rules: {} }},\n",
             m.fnc1_required, m.dl_data_attr, m.dl_primary_key, quals, req, ex
         ));
     }

@@ -45,6 +45,7 @@ pub struct AiReqClause {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AiMeta {
     pub code: &'static str,
+    pub title: Option<&'static str>,
     pub fixed_len: Option<u8>,
     pub components: &'static [AiComponent],
     pub fnc1_required: bool,

@@ -3,7 +3,9 @@ mod gs1;
 
 use aidc_core::AidcError;
 
-use crate::model::{Gs1TransportMessage, ParseResult, ParsedPayload, SymbologyId, TransportKind};
+#[cfg(feature = "gs1-composite")]
+use crate::model::SymbologyId;
+use crate::model::{Gs1TransportMessage, ParseResult, ParsedPayload, TransportKind};
 
 pub fn parse_payload(message: Gs1TransportMessage) -> Result<ParseResult, AidcError> {
     match message.transport.kind {

@@ -41,6 +41,8 @@ pub mod model;
 pub mod normalize;
 pub mod parser;
 pub mod variable_measure;
+#[cfg(feature = "wire-record")]
+pub mod wire;
 
 use aidc_core::{AidcError, EncodeInput, EncodedScan, ScanInput, TransportCodec};
 
@@ -55,6 +57,11 @@ pub use model::{
 };
 pub use normalize::normalize_payload;
 pub use parser::parse_payload;
+#[cfg(feature = "wire-record")]
+pub use wire::{
+    AiElementRecord, CarrierFamilyRecord, ParsedPayloadRecord, ParsedScanRecord,
+    TransportKindRecord, TransportRecord, PARSED_SCAN_RECORD_SCHEMA_VERSION,
+};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Gs1Codec;

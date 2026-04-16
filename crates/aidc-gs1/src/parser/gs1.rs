@@ -210,6 +210,7 @@ fn has_ambiguous_following_element(ai: &str, body: &str) -> bool {
     false
 }
 
+#[cfg(feature = "gs1-dl")]
 pub(crate) fn parse_internal_ai_string(input: &str) -> Result<Vec<AiElement>, AidcError> {
     if !input.starts_with('^') || input.len() == 1 {
         return Err(AidcError::InvalidPayload(
